@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Change of Basis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- MathJax for nice equation rendering in the error message -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        /* CRITICAL FIX for Blackboard/LMS embedding */
+        html, body { 
+            height: 100%; 
+            min-height: 600px;
+        }
+        
+        body { font-family: 'Inter', sans-serif; overflow: hidden; touch-action: none; }
+        canvas { touch-action: none; }
+        
+        /* Styles for simulating column vectors (Display Text) */
+        .col-vector {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.25rem;
+            line-height: 1.1;
+            padding: 0 8px;
+            position: relative;
+            min-width: 2.5rem;
+        }
+        /* Top bracket part */
+        .col-vector::before {
+            content: '';
+            position: absolute;
+            left: 0; right: 0; top: 0;
+            border-left: 2px solid currentColor;
+            border-right: 2px solid currentColor;
+            height: 100%;
+            opacity: 0.7;
+            border-radius: 4px;
+        }
+
+        .vec-component { 
+            padding: 4px 0;
+            white-space: nowrap; 
+        }
+        .vec-subscript { 
+            font-size: 0.75rem; 
+            position: absolute; 
+            bottom: -8px; 
+            right: -12px;
+            font-weight: 700;
+            opacity: 0.8;
+        }
+        .v-label {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #60a5fa; /* Blue-400 */
+        }
+
+        /* NEW STYLES FOR INPUT VECTORS */
+        .input-vector-wrapper {
+            position: relative;
+            padding: 4px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        /* The Brackets for inputs */
+        .input-vector-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+            border-left: 2px solid #64748b; /* Slate-500 */
+            border-right: 2px solid #64748b;
+            border-radius: 6px;
+            pointer-events: none;
+        }
+        /* Small feet to make them look like [ ] */
+        .input-vector-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+            border-top: 2px solid #64748b;
+            border-bottom: 2px solid #64748b;
+            clip-path: polygon(0 0, 6px 0, 6px 100%, 0 100%, 0 0, 100% 0, 100% 100%, calc(100% - 6px) 100%, calc(100% - 6px) 0, 100% 0);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        input[type=number] {
+            background: rgba(30, 41, 59, 0.5); /* Dark slate transparent */
+            color: white;
+            width: 50px;
+            padding: 4px;
+            border-radius: 4px;
+            text-align: center;
+            font-family: 'Roboto Mono', monospace;
+            border: 1px solid transparent;
+        }
+        input[type=number]:focus {
+            outline: none;
+            background: rgba(59, 130, 246, 0.2); /* Blue tint */
+            border-color: #3b82f6;
+        }
+        /* Remove arrows from number inputs */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen flex flex-col min-h-[600px]">
+
+    <!-- Header (Simplified) -->
+    <div class="p-4 bg-slate-800 border-b border-slate-700 shadow-sm z-20 flex-shrink-0 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold text-blue-400">Change of Basis Visualiser</h1>
+        </div>
+        <div class="text-xs text-slate-500 hidden sm:block">
+            Interactive Vector Space $\mathbb{R}^2$
+        </div>
+    </div>
+
+    <!-- Main Layout Container -->
+    <div class="flex flex-col md:flex-row flex-grow overflow-hidden h-full">
+        
+        <!-- Left Sidebar (Controls & Display) -->
+        <aside class="w-full md:w-72 bg-slate-800/50 border-b md:border-b-0 md:border-r border-slate-700 p-6 flex flex-row md:flex-col gap-6 md:gap-8 items-center md:items-start justify-center md:justify-start shadow-xl z-10 flex-shrink-0 overflow-y-auto custom-scrollbar">
+            
+            <!-- Section 1: Basis Definition -->
+            <div class="flex flex-col gap-6 items-center md:items-start w-full">
+                <div class="hidden md:block">
+                    <h2 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">Basis Definition</h2>
+                    <p class="text-slate-500 text-xs">Edit components below</p>
+                </div>
+
+                <!-- b1 Control -->
+                <div class="flex items-center gap-3">
+                    <span class="text-amber-400 font-bold font-mono text-xl">b₁</span>
+                    <span class="text-slate-500 text-lg">=</span>
+                    <div class="input-vector-wrapper">
+                        <input type="number" id="b1x" value="1" step="0.1" aria-label="b1 x-component">
+                        <input type="number" id="b1y" value="2" step="0.1" aria-label="b1 y-component">
+                    </div>
+                </div>
+
+                <!-- b2 Control -->
+                <div class="flex items-center gap-3">
+                    <span class="text-emerald-400 font-bold font-mono text-xl">b₂</span>
+                    <span class="text-slate-500 text-lg">=</span>
+                    <div class="input-vector-wrapper">
+                        <input type="number" id="b2x" value="1" step="0.1" aria-label="b2 x-component">
+                        <input type="number" id="b2y" value="-1" step="0.1" aria-label="b2 y-component">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="hidden md:block w-full h-px bg-slate-700/50 my-2"></div>
+
+            <!-- Section 2: Current Vector Display -->
+            <div class="flex flex-col gap-4 items-center md:items-start w-full">
+                <div class="hidden md:block">
+                    <h2 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">Current Vector</h2>
+                    <p class="text-slate-500 text-xs">Vector Coordinates</p>
+                </div>
+
+                <!-- Combined Single Line Display -->
+                <div class="flex flex-wrap items-center justify-start gap-2 w-full">
+                    <!-- v = -->
+                    <span class="text-blue-400 font-bold font-serif italic text-xl">v</span>
+                    <span class="text-slate-500 text-lg">=</span>
+
+                    <!-- [Vector]E -->
+                    <div class="relative mr-1">
+                        <div id="vVector" class="col-vector text-blue-200 text-base">
+                            <div class="vec-component">0.0</div>
+                            <div class="vec-component">0.0</div>
+                        </div>
+                        <span class="absolute -bottom-1 -right-2 text-[10px] text-slate-500 font-bold font-mono">E</span>
+                    </div>
+
+                    <!-- = -->
+                    <span class="text-slate-500 text-lg">=</span>
+
+                    <!-- [Vector]B -->
+                    <div class="relative transition-opacity duration-300" id="bVectorContainer">
+                        <div id="bVector" class="col-vector text-yellow-400 text-base">
+                            <div class="vec-component">0.0</div>
+                            <div class="vec-component">0.0</div>
+                        </div>
+                        <span class="absolute -bottom-1 -right-2 text-[10px] text-slate-500 font-bold font-mono">B</span>
+                    </div>
+                </div>
+
+                <!-- Coefficients Text -->
+                <div class="hidden md:block mt-4 text-sm text-slate-400 font-mono w-full bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                    <div class="mb-2 text-[10px] uppercase tracking-wider text-center text-slate-500 font-bold">Linear Combination</div>
+                    <div class="flex justify-center items-baseline flex-wrap gap-x-1.5">
+                        <span class="text-blue-400 font-bold serif italic">v</span>
+                        <span class="text-slate-500">=</span>
+                        <span id="coeff1" class="text-amber-400 font-bold">0.00</span>
+                        <span class="text-amber-400 font-bold">b₁</span>
+                        <span class="text-slate-500">+</span>
+                        <span id="coeff2" class="text-emerald-400 font-bold">0.00</span>
+                        <span class="text-emerald-400 font-bold">b₂</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile filler/Footer -->
+            <div class="mt-auto text-xs text-slate-500 hidden md:block pt-4">
+                <p>Standard Basis E:</p>
+                <p class="font-mono mt-1 opacity-50">e₁=(1,0), e₂=(0,1)</p>
+            </div>
+        </aside>
+
+        <!-- Canvas Area -->
+        <div class="flex-grow relative flex justify-center items-center bg-slate-950 overflow-hidden w-full cursor-crosshair" id="canvasContainer">
+            <canvas id="vizCanvas"></canvas>
+            
+            <!-- Error Banner -->
+            <div id="errorBanner" class="hidden absolute top-4 left-4 right-4 md:left-auto md:right-auto md:w-[400px] bg-red-500/90 text-white px-6 py-4 rounded-lg shadow-2xl backdrop-blur border border-red-400 z-50 text-center">
+                <h3 class="font-bold text-lg mb-1">⚠️ Invalid Basis</h3>
+                <p class="text-sm leading-tight">Vectors <span class="font-mono">b₁</span> and <span class="font-mono">b₂</span> are linearly dependent. They do not span $\mathbb{R}^2$.</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {
+    // --- Global Setup ---
+    const canvas = document.getElementById('vizCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasContainer');
+
+    // DOM Elements
+    const vVectorDisplay = document.getElementById('vVector');
+    const bVectorDisplay = document.getElementById('bVector');
+    const bVectorContainer = document.getElementById('bVectorContainer');
+    const errorBanner = document.getElementById('errorBanner');
+    const coeff1Span = document.getElementById('coeff1');
+    const coeff2Span = document.getElementById('coeff2');
+
+    // Inputs
+    const inpB1x = document.getElementById('b1x');
+    const inpB1y = document.getElementById('b1y');
+    const inpB2x = document.getElementById('b2x');
+    const inpB2y = document.getElementById('b2y');
+
+    // State
+    let width, height, centerX, centerY;
+    let scale = 40; // pixels per unit
+
+    // Vectors (Math Coordinates)
+    let v = { x: 3, y: 2 }; 
+    let b1 = { x: 1, y: 2 };
+    let b2 = { x: 1, y: -1 };
+
+    let isValidBasis = true;
+    let P_B_to_E = [[0,0],[0,0]]; // Inverse matrix placeholder
+
+    // Interaction State
+    let dragTarget = null; // 'v', 'b1', 'b2'
+    const HIT_RADIUS = 0.8; // Sensitivity radius in math units
+
+    // --- Math Logic ---
+
+    function updateBasisMatrix() {
+        // 1. Calculate Determinant of Basis Matrix [b1 b2]
+        // Matrix P_E<-B = [[b1.x, b2.x], [b1.y, b2.y]]
+        const det = (b1.x * b2.y) - (b2.x * b1.y);
+
+        // Check for linear dependence (floating point tolerance)
+        if (Math.abs(det) < 0.001) {
+            isValidBasis = false;
+            errorBanner.classList.remove('hidden');
+            bVectorContainer.style.opacity = '0.3';
+            coeff1Span.innerText = "?";
+            coeff2Span.innerText = "?";
+            
+            // Set placeholder for display
+            bVectorDisplay.children[0].textContent = "-";
+            bVectorDisplay.children[1].textContent = "-";
+            return;
+        }
+
+        isValidBasis = true;
+        errorBanner.classList.add('hidden');
+        bVectorContainer.style.opacity = '1';
+
+        // 2. Calculate Inverse Matrix (P_B<-E)
+        // P^-1 = (1/det) * [[d, -b], [-c, a]]
+        // a=b1.x, b=b2.x, c=b1.y, d=b2.y  <-- Note column vector structure
+        
+        const invDet = 1 / det;
+        
+        // Matrix math:
+        // [ b1x  b2x ] -1             [  b2y  -b2x ]
+        // [ b1y  b2y ]     = invDet * [ -b1y   b1x ]
+        
+        P_B_to_E = [
+            [ b2.y * invDet, -b2.x * invDet ], // Row 1
+            [ -b1.y * invDet, b1.x * invDet ]  // Row 2
+        ];
+    }
+
+    function getCoordinatesInB(vec) {
+        if (!isValidBasis) return null;
+        
+        // Multiply P_B<-E * vec
+        const c1 = P_B_to_E[0][0] * vec.x + P_B_to_E[0][1] * vec.y;
+        const c2 = P_B_to_E[1][0] * vec.x + P_B_to_E[1][1] * vec.y;
+        
+        return { x: c1, y: c2 };
+    }
+
+    // --- Drawing Utilities ---
+
+    function toScreen(x, y) {
+        return {
+            x: centerX + x * scale,
+            y: centerY - y * scale 
+        };
+    }
+
+    function drawArrow(from, to, color, width = 3, style = 'solid') {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        
+        if (style === 'dashed') ctx.setLineDash([6, 6]);
+        else if (style === 'dotted') ctx.setLineDash([2, 4]);
+        else ctx.setLineDash([]);
+
+        const start = toScreen(from.x, from.y);
+        const end = toScreen(to.x, to.y);
+        
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Arrow head
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        const headLen = 12;
+        
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI / 6), end.y - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(end.x - headLen * Math.cos(angle + Math.PI / 6), end.y - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.fill();
+    }
+
+    function drawHandle(vec, color, isHoveredOrDragged, label) {
+        const pos = toScreen(vec.x, vec.y);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, isHoveredOrDragged ? 8 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = color;
+        ctx.font = "bold 14px Roboto Mono";
+        ctx.fillText(label, pos.x + 12, pos.y - 12);
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = '#1e293b'; 
+        ctx.lineWidth = 1;
+        
+        // Use a slightly larger range to cover the screen
+        const xMax = width / (2 * scale);
+        const yMax = height / (2 * scale);
+
+        for (let x = 0; x <= Math.ceil(xMax); x++) {
+            const sX = centerX + x * scale;
+            const sXn = centerX - x * scale;
+            ctx.beginPath(); ctx.moveTo(sX, 0); ctx.lineTo(sX, height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sXn, 0); ctx.lineTo(sXn, height); ctx.stroke();
+        }
+        for (let y = 0; y <= Math.ceil(yMax); y++) {
+            const sY = centerY + y * scale;
+            const sYn = centerY - y * scale;
+            ctx.beginPath(); ctx.moveTo(0, sY); ctx.lineTo(width, sY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, sYn); ctx.lineTo(width, sYn); ctx.stroke();
+        }
+
+        // Axes
+        ctx.strokeStyle = '#475569'; 
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(centerX, 0); ctx.lineTo(centerX, height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(width, centerY); ctx.stroke();
+    }
+
+    // --- Main Render Loop ---
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        drawGrid();
+
+        updateBasisMatrix();
+
+        // 1. Draw Basis B Vectors
+        // If dragging, we still draw them. If invalid, we draw them but maybe style indicates issues.
+        drawArrow({x:0, y:0}, b1, '#f59e0b', 3); 
+        drawArrow({x:0, y:0}, b2, '#10b981', 3);
+
+        // 2. Draw Projections (Only if valid basis)
+        let coordsB = null;
+
+        if (isValidBasis) {
+            coordsB = getCoordinatesInB(v);
+
+            // c1 * b1 vector
+            const c1b1 = { x: coordsB.x * b1.x, y: coordsB.x * b1.y };
+            // c2 * b2 vector
+            const c2b2 = { x: coordsB.y * b2.x, y: coordsB.y * b2.y };
+
+            // Projections (Dashed from origin)
+            drawArrow({x:0, y:0}, c1b1, '#f59e0b', 1, 'dashed');
+            drawArrow({x:0, y:0}, c2b2, '#10b981', 1, 'dashed');
+
+            // Parallelogram completion (Dotted)
+            // Line from c1b1 to v (parallel to b2)
+            const s_c1b1 = toScreen(c1b1.x, c1b1.y);
+            const s_v = toScreen(v.x, v.y);
+            ctx.beginPath();
+            ctx.strokeStyle = '#94a3b8'; // Slate 400
+            ctx.setLineDash([2, 4]);
+            ctx.moveTo(s_c1b1.x, s_c1b1.y);
+            ctx.lineTo(s_v.x, s_v.y);
+            ctx.stroke();
+
+            // Line from c2b2 to v (parallel to b1)
+            const s_c2b2 = toScreen(c2b2.x, c2b2.y);
+            ctx.beginPath();
+            ctx.moveTo(s_c2b2.x, s_c2b2.y);
+            ctx.lineTo(s_v.x, s_v.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // 3. Draw Main Vector v
+        drawArrow({x:0, y:0}, v, '#60a5fa', 4); // Blue-400
+
+        // 4. Draw Handles
+        drawHandle(b1, '#f59e0b', dragTarget === 'b1', 'b₁');
+        drawHandle(b2, '#10b981', dragTarget === 'b2', 'b₂');
+        drawHandle(v, '#60a5fa', dragTarget === 'v', 'v');
+
+        // 5. Update DOM text
+        updateHTMLDisplay(v, coordsB);
+    }
+
+    function updateHTMLDisplay(vecE, vecB) {
+        // [v]_E
+        vVectorDisplay.children[0].textContent = vecE.x.toFixed(1);
+        vVectorDisplay.children[1].textContent = vecE.y.toFixed(1);
+
+        if (vecB) {
+            // [v]_B
+            // Handle -0.00 display issue
+            const fmt = (n) => (Math.abs(n) < 0.05 ? "0.00" : n.toFixed(2));
+            
+            bVectorDisplay.children[0].textContent = fmt(vecB.x);
+            bVectorDisplay.children[1].textContent = fmt(vecB.y);
+            
+            coeff1Span.innerText = fmt(vecB.x);
+            coeff2Span.innerText = fmt(vecB.y);
+        }
+    }
+
+    // --- Interaction Logic ---
+
+    function updateFromInputs() {
+        b1.x = parseFloat(inpB1x.value) || 0;
+        b1.y = parseFloat(inpB1y.value) || 0;
+        b2.x = parseFloat(inpB2x.value) || 0;
+        b2.y = parseFloat(inpB2y.value) || 0;
+        draw();
+    }
+
+    // Attach Input Listeners
+    const inputs = [inpB1x, inpB1y, inpB2x, inpB2y];
+    inputs.forEach(inp => {
+        inp.addEventListener('input', updateFromInputs);
+        inp.addEventListener('change', updateFromInputs);
+    });
+
+    function syncInputs() {
+        // Avoid updating inputs if they are currently focused (to prevent jitter while typing)
+        if (document.activeElement !== inpB1x) inpB1x.value = b1.x.toFixed(1);
+        if (document.activeElement !== inpB1y) inpB1y.value = b1.y.toFixed(1);
+        if (document.activeElement !== inpB2x) inpB2x.value = b2.x.toFixed(1);
+        if (document.activeElement !== inpB2y) inpB2y.value = b2.y.toFixed(1);
+    }
+
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.clientX || (evt.touches ? evt.touches[0].clientX : 0);
+        const clientY = evt.clientY || (evt.touches ? evt.touches[0].clientY : 0);
+        return {
+            x: (clientX - rect.left - centerX) / scale,
+            y: -(clientY - rect.top - centerY) / scale
+        };
+    }
+
+    function getDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+
+    function handleStart(evt) {
+        const pos = getMousePos(evt);
+        
+        // Check distance to handles
+        if (getDistance(pos, v) < HIT_RADIUS) {
+            dragTarget = 'v';
+        } else if (getDistance(pos, b1) < HIT_RADIUS) {
+            dragTarget = 'b1';
+        } else if (getDistance(pos, b2) < HIT_RADIUS) {
+            dragTarget = 'b2';
+        }
+    }
+
+    function handleMove(evt) {
+        if (!dragTarget) return;
+        
+        evt.preventDefault();
+        const pos = getMousePos(evt);
+        
+        if (dragTarget === 'v') {
+            v.x = pos.x;
+            v.y = pos.y;
+        } else if (dragTarget === 'b1') {
+            b1.x = pos.x;
+            b1.y = pos.y;
+            syncInputs();
+        } else if (dragTarget === 'b2') {
+            b2.x = pos.x;
+            b2.y = pos.y;
+            syncInputs();
+        }
+        
+        draw();
+    }
+
+    function handleEnd() {
+        dragTarget = null;
+    }
+
+    // Event Listeners
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    canvas.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchend', handleEnd);
+
+    function resize() {
+        width = container.clientWidth;
+        height = container.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+        centerX = width / 2;
+        centerY = height / 2;
+        
+        // Adaptive scale based on screen size
+        scale = Math.min(width, height) / 16; 
+        draw();
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    syncInputs(); // Init inputs
+
+})(); // End IIFE
+</script>
+</body>
+</html>

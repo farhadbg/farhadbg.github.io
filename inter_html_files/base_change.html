@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change of Basis & Diagonalisability</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Ensure it fits in Blackboard/LMS without collapsing */
+        html, body { height: 100%; min-height: 650px; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overflow-y: auto; 
+            background-color: #0f172a; 
+            color: white; 
+        }
+        
+        .canvas-container {
+            position: relative;
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        
+        canvas {
+            touch-action: none; /* Prevents scrolling while dragging on canvas */
+        }
+        
+        .matrix-input {
+            @apply bg-slate-700 text-white text-center font-mono font-bold rounded border border-slate-500 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all;
+            width: 40px;  /* Reduced width */
+            height: 30px; /* Reduced height */
+            font-size: 0.9rem; /* Smaller font */
+            padding: 0;
+        }
+        
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .fade-transition {
+            transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col p-4 gap-4 relative">
+
+    <!-- QUESTION: What happens when both w₁ and w₂ are linearly independent eigenvectors? (Original box, now on the right) -->
+    <div id="questionBox" class="absolute bottom-8 right-8 z-50 opacity-0 pointer-events-none max-w-xs fade-transition translate-y-[20px]">
+        <div class="bg-indigo-900/90 text-indigo-100 px-6 py-4 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-500 text-center backdrop-blur-sm">
+            <span class="text-2xl block mb-2">🤔</span>
+            <p class="font-semibold text-sm">What happens when both <span class="font-serif italic">w₁</span> and <span class="font-serif italic">w₂</span> are linearly independent eigenvectors?</p>
+        </div>
+    </div>
+
+    <!-- NEW Instruction Overlay (Bottom Left) -->
+    <div id="instructionBox" class="absolute bottom-8 left-8 z-50 opacity-0 pointer-events-none max-w-xs fade-transition translate-y-[20px]">
+        <div class="bg-blue-900/90 text-blue-100 px-6 py-4 rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-blue-500 text-center backdrop-blur-sm">
+            <span class="text-2xl block mb-2">👆 Drag Me!</span>
+            <p class="font-semibold text-sm">Move the vectors v, w₁ and w₂ to observe the effects of a linear map M and the change of basis C⁻¹MC.</p>
+        </div>
+    </div>
+
+    <!-- Controls Section -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col gap-4 flex-shrink-0">
+        
+        <!-- Row 1: Title -->
+        <div>
+            <h1 class="text-xl font-bold text-blue-400 leading-snug">
+                Linear maps, Change of Basis & Diagonalisability
+            </h1>
+        </div>
+
+        <!-- Row 2: Controls (Centralized Matrices) -->
+        <div class="relative flex flex-col xl:flex-row xl:items-center xl:justify-center gap-4 pt-2">
+            
+            <!-- Calculation Panel (C, M -> M_BB(T)) -->
+            <div class="flex gap-4 items-center bg-slate-900/50 p-4 rounded-lg border border-slate-600 shadow-inner overflow-x-auto max-w-full z-0">
+                
+                <!-- 1. Matrix C ([w₁ w₂] Basis) -->
+                <div class="flex flex-col items-center">
+                    <span class="text-xs text-slate-400 font-mono mb-2 font-bold">C ([w₁ w₂] Basis)</span>
+                    <div class="flex items-center gap-2 text-3xl text-slate-500 font-light">
+                        <span>[</span>
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-lg font-mono font-bold">
+                            <span id="c00" class="text-amber-400 text-right">1.0</span> <span id="c01" class="text-purple-400 text-right">0.0</span>
+                            <span id="c10" class="text-amber-400 text-right">0.0</span> <span id="c11" class="text-purple-400 text-right">1.0</span>
+                        </div>
+                        <span>]</span>
+                    </div>
+                </div>
+
+                <!-- 2. Separator: Comma -->
+                <div class="text-3xl font-light text-slate-500">
+                    ,
+                </div>
+                
+                <!-- 3. Matrix M (Transformation Input) -->
+                <div class="flex flex-col items-center">
+                    <span class="text-xs text-slate-400 font-mono mb-2 font-bold">M (Standard Basis)</span>
+                    <div class="flex items-center gap-2 text-3xl text-slate-500 font-light">
+                        <span>[</span>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <input type="number" id="m00" value="1" step="0.1" class="matrix-input">
+                            <input type="number" id="m01" value="0" step="0.1" class="matrix-input">
+                            <input type="number" id="m10" value="0" step="0.1" class="matrix-input">
+                            <input type="number" id="m11" value="2" step="0.1" class="matrix-input">
+                        </div>
+                        <span>]</span>
+                    </div>
+                </div>
+                
+                <!-- 4. Separator: Arrow (->) -->
+                <div class="text-slate-500">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            
+                <!-- 5. Result Matrix -->
+                <div class="flex flex-col items-center">
+                    <span class="text-xs text-slate-400 font-mono mb-2 font-bold">M<sub>BB</sub>(T) = C⁻¹MC</span>
+                    <div class="flex items-center gap-2 text-3xl text-slate-500 font-light">
+                        <span>[</span>
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-lg font-mono font-bold text-green-400">
+                            <span id="r00" class="text-right">1.0</span> <span id="r01" class="text-right">0.0</span>
+                            <span id="r10" class="text-right">0.0</span> <span id="r11" class="text-right">2.0</span>
+                        </div>
+                        <span>]</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Visualization Area -->
+    <div class="flex flex-col lg:flex-row gap-4 flex-grow h-full min-h-0">
+        
+        <!-- LEFT: Domain -->
+        <div class="flex-1 flex flex-col gap-2 min-h-[300px]">
+            <div class="flex justify-between items-end px-2">
+                <h2 class="font-bold text-slate-300">Domain ℝ² (Input)</h2>
+            </div>
+            <div class="canvas-container flex-grow h-full relative" id="containerLeft">
+                <canvas id="canvasLeft"></canvas>
+                <!-- Math Overlay -->
+                <div class="absolute top-3 left-3 bg-slate-900/90 px-3 py-2 rounded border border-slate-700 text-sm math-font shadow-lg pointer-events-none z-10">
+                    <span class="text-blue-400">v</span> = 
+                    <span class="text-amber-400" id="val_l1">0.0</span> <span class="text-amber-400">w₁</span> + 
+                    <span class="text-purple-400" id="val_l2">0.0</span> <span class="text-purple-400">w₂</span>
+                </div>
+                <!-- Eigen Status Left (Quadrant 1: Top Right) -->
+                <div id="statusLeft" class="hidden absolute top-[15%] right-[15%] transform translate-x-1/2 -translate-y-1/2 bg-green-900/80 border border-green-500 text-green-100 px-3 py-2 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none animate-pulse text-xs font-bold z-20">
+                    ✨ Eigenvector Detected
+                </div>
+                <div class="absolute bottom-3 right-3 text-xs text-slate-500 pointer-events-none">
+                    Drag vectors to adjust
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Codomain -->
+        <div class="flex-1 flex flex-col gap-2 min-h-[300px]">
+            <div class="flex justify-between items-end px-2">
+                <h2 class="font-bold text-slate-300">Codomain ℝ² (Output)</h2>
+            </div>
+            <div class="canvas-container flex-grow h-full relative" id="containerRight">
+                <canvas id="canvasRight"></canvas>
+                <!-- Math Overlay -->
+                <div class="absolute top-3 left-3 bg-slate-900/90 px-3 py-2 rounded border border-slate-700 text-sm math-font shadow-lg pointer-events-none z-10">
+                    <span class="text-blue-400">Mv</span> = 
+                    <span class="text-amber-400" id="val_l1_r">0.0</span> <span class="text-amber-400">Mw₁</span> + 
+                    <span class="text-purple-400" id="val_l2_r">0.0</span> <span class="text-purple-400">Mw₂</span>
+                </div>
+                <!-- Eigen Status Right (Quadrant 2: Top Left) -->
+                <div id="statusRight" class="hidden absolute top-[15%] left-[15%] transform -translate-x-1/2 -translate-y-1/2 bg-green-900/80 border border-green-500 text-green-100 px-3 py-2 rounded-lg shadow-lg backdrop-blur-sm pointer-events-none animate-pulse text-xs font-bold z-20">
+                    ✨ Eigenvector Detected
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() { 
+    
+    // --- Configuration ---
+    const scale = 40; 
+    const gridColor = '#334155';
+    const axisColor = '#94a3b8';
+
+    // --- State ---
+    let M = { a: 1, b: 0, c: 0, d: 2 };
+
+    // Vectors (Math coordinates)
+    let v = { x: 2, y: 1 };
+    let w1 = { x: 1, y: 0 };
+    let w2 = { x: 0, y: 1 };
+
+    // Calculated Values
+    let lambda1 = 0;
+    let lambda2 = 0;
+    let isDependent = false;
+    let isEigen = false;
+    let eigenLambda = 0;
+
+    // Interaction
+    let dragging = null; 
+
+    // --- DOM Elements ---
+    const canvasL = document.getElementById('canvasLeft');
+    const ctxL = canvasL.getContext('2d');
+    const containerL = document.getElementById('containerLeft');
+
+    const canvasR = document.getElementById('canvasRight');
+    const ctxR = canvasR.getContext('2d');
+    const containerR = document.getElementById('containerRight');
+
+    // Labels & Status
+    const lbl_l1 = document.getElementById('val_l1');
+    const lbl_l2 = document.getElementById('val_l2');
+    const lbl_l1_r = document.getElementById('val_l1_r');
+    const lbl_l2_r = document.getElementById('val_l2_r');
+    const statusLeft = document.getElementById('statusLeft');
+    const statusRight = document.getElementById('statusRight');
+    const questionBox = document.getElementById('questionBox');
+    const instructionBox = document.getElementById('instructionBox'); // NEW
+
+    const inputs = {
+        m00: document.getElementById('m00'),
+        m01: document.getElementById('m01'),
+        m10: document.getElementById('m10'),
+        m11: document.getElementById('m11'),
+    };
+
+    const calcEls = {
+        c00: document.getElementById('c00'), c01: document.getElementById('c01'),
+        c10: document.getElementById('c10'), c11: document.getElementById('c11'),
+        r00: document.getElementById('r00'), r01: document.getElementById('r01'),
+        r10: document.getElementById('r10'), r11: document.getElementById('r11'),
+    };
+
+    // --- Question Animation Logic ---
+    function startQuestionSequence() {
+        let count = 0;
+        const maxCount = 3;
+        const showDuration = 10000; // 10s
+        const cycleDuration = 40000; // 40s
+
+        const show = () => {
+            if (count >= maxCount) return;
+            
+            // Show
+            questionBox.classList.remove('opacity-0', 'translate-y-[20px]');
+            questionBox.classList.add('opacity-100', 'translate-y-0');
+            
+            // Hide after 10s
+            setTimeout(() => {
+                questionBox.classList.remove('opacity-100', 'translate-y-0');
+                questionBox.classList.add('opacity-0', 'translate-y-[20px]');
+            }, showDuration);
+
+            count++;
+            // Schedule next show
+            if (count < maxCount) {
+                setTimeout(show, cycleDuration);
+            }
+        };
+
+        // Start first cycle after a short delay
+        setTimeout(show, 1000);
+    }
+    
+    // --- Instruction Animation Logic (NEW) ---
+    function startInstructionSequence() {
+        let count = 0;
+        const maxCount = 2; // Show twice
+        const showDuration = 8000; // 8s
+        const cycleDuration = 30000; // 30s
+
+        const show = () => {
+            if (count >= maxCount) return;
+            
+            // Show
+            instructionBox.classList.remove('opacity-0', 'translate-y-[20px]');
+            instructionBox.classList.add('opacity-100', 'translate-y-0');
+            
+            // Hide after 8s
+            setTimeout(() => {
+                instructionBox.classList.remove('opacity-100', 'translate-y-0');
+                instructionBox.classList.add('opacity-0', 'translate-y-[20px]');
+            }, showDuration);
+
+            count++;
+            // Schedule next show
+            if (count < maxCount) {
+                setTimeout(show, cycleDuration);
+            }
+        };
+
+        // Start first cycle after a short delay (e.g., 500ms)
+        setTimeout(show, 500);
+    }
+
+
+    // --- Math Logic ---
+
+    function applyM(vec) {
+        return {
+            x: M.a * vec.x + M.b * vec.y,
+            y: M.c * vec.x + M.d * vec.y
+        };
+    }
+
+    function solveDecomposition() {
+        const det = w1.x * w2.y - w1.y * w2.x;
+        
+        if (Math.abs(det) < 0.0001) {
+            isDependent = true;
+            lambda1 = 0; lambda2 = 0;
+        } else {
+            isDependent = false;
+            // Solve: [w1 | w2] * [lambda1, lambda2]^T = v
+            // Cramer's Rule or Inverse Matrix applied to the 2x2 system
+            // lambda1 = (v.x * w2.y - v.y * w2.x) / det
+            lambda1 = (v.x * w2.y - w2.x * v.y) / det;
+            // lambda2 = (w1.x * v.y - w1.y * v.x) / det
+            lambda2 = (w1.x * v.y - w1.y * v.x) / det;
+        }
+    }
+
+    function checkEigen() {
+        const Mv = applyM(v);
+        
+        // Zero vector check
+        if (Math.abs(v.x) < 0.01 && Math.abs(v.y) < 0.01) {
+            isEigen = false;
+            return;
+        }
+
+        // Check if Mv is parallel to v (cross product is zero in 2D)
+        const cross = v.x * Mv.y - v.y * Mv.x;
+        
+        if (Math.abs(cross) < 0.1) {
+            isEigen = true;
+            // Calculate eigenvalue lambda
+            if (Math.abs(v.x) > 0.1) eigenLambda = Mv.x / v.x;
+            else if (Math.abs(v.y) > 0.1) eigenLambda = Mv.y / v.y;
+            else eigenLambda = 0; // Should not happen if v is non-zero
+        } else {
+            isEigen = false;
+        }
+    }
+
+    function updateCalculations() {
+        // C = [w1.x, w2.x; w1.y, w2.y]
+        const ca = w1.x, cb = w2.x;
+        const cc = w1.y, cd = w2.y;
+        
+        calcEls.c00.innerText = ca.toFixed(1);
+        calcEls.c01.innerText = cb.toFixed(1);
+        calcEls.c10.innerText = cc.toFixed(1);
+        calcEls.c11.innerText = cd.toFixed(1);
+
+        const det = ca * cd - cb * cc;
+
+        // If C is singular (linearly dependent vectors), C^-1 does not exist
+        if (Math.abs(det) < 0.001) {
+            ['r00','r01','r10','r11'].forEach(k => calcEls[k].innerText = "Singular");
+            return;
+        }
+
+        const invDet = 1 / det;
+        // C^-1 = 1/det * [cd, -cb; -cc, ca]
+        const cia = cd * invDet;
+        const cib = -cb * invDet;
+        const cic = -cc * invDet;
+        const cid = ca * invDet;
+
+        // Calculate P = MC
+        const pa = M.a * ca + M.b * cc; 
+        const pb = M.a * cb + M.b * cd; 
+        const pc = M.c * ca + M.d * cc; 
+        const pd = M.c * cb + M.d * cd; 
+
+        // Calculate Result = C^-1 * P
+        const res_a = cia * pa + cib * pc;
+        const res_b = cia * pb + cib * pd;
+        const res_c = cic * pa + cid * pc;
+        const res_d = cic * pb + cid * pd;
+
+        calcEls.r00.innerText = res_a.toFixed(2);
+        calcEls.r01.innerText = res_b.toFixed(2);
+        calcEls.r10.innerText = res_c.toFixed(2);
+        calcEls.r11.innerText = res_d.toFixed(2);
+    }
+
+    // --- Main Render Loop ---
+
+    function draw() {
+        solveDecomposition();
+        checkEigen();
+        updateCalculations();
+        const Mv = applyM(v);
+        const Mw1 = applyM(w1);
+        const Mw2 = applyM(w2);
+
+        // --- Update UI Texts ---
+        lbl_l1.innerText = lambda1.toFixed(2);
+        lbl_l2.innerText = lambda2.toFixed(2);
+        lbl_l1_r.innerText = lambda1.toFixed(2);
+        lbl_l2_r.innerText = lambda2.toFixed(2);
+
+        // Update Status Visibility
+        if (isEigen && !isDependent) {
+            const msg = `✨ Eigenvector (λ ≈ ${eigenLambda.toFixed(2)})`;
+            statusLeft.innerHTML = msg;
+            statusRight.innerHTML = msg;
+            statusLeft.classList.remove('hidden');
+            statusRight.classList.remove('hidden');
+        } else {
+            statusLeft.classList.add('hidden');
+            statusRight.classList.add('hidden');
+        }
+
+        // --- LEFT CANVAS (DOMAIN) ---
+        drawGrid(ctxL, canvasL.width, canvasL.height);
+
+        if (!isDependent) {
+            // Draw ghosts for components
+            drawGhost(ctxL, {x: w1.x * lambda1, y: w1.y * lambda1}, '#fbbf24', canvasL);
+            drawGhost(ctxL, {x: w2.x * lambda2, y: w2.y * lambda2}, '#c084fc', canvasL);
+            // Draw dashed lines completing the parallelogram (vector addition)
+            drawParallelogram(ctxL, w1, lambda1, w2, lambda2, '#fbbf24', canvasL); 
+            drawParallelogram(ctxL, w2, lambda2, w1, lambda1, '#c084fc', canvasL); 
+        }
+
+        // Draw basis vectors w1, w2
+        drawArrow(ctxL, w1, '#fbbf24', 'w₁', canvasL);
+        drawArrow(ctxL, w2, '#c084fc', 'w₂', canvasL);
+        // Draw input vector v
+        const vColor = isEigen ? '#22c55e' : '#3b82f6'; 
+        drawArrow(ctxL, v, vColor, 'v', canvasL, false, 4);
+
+        // Draw handles for dragging
+        drawHandle(ctxL, w1, '#fbbf24', canvasL, dragging === 'w1');
+        drawHandle(ctxL, w2, '#c084fc', canvasL, dragging === 'w2');
+        drawHandle(ctxL, v, vColor, canvasL, dragging === 'v');
+
+        // --- RIGHT CANVAS (CODOMAIN) ---
+        drawGrid(ctxR, canvasR.width, canvasR.height);
+
+        if (!isDependent) {
+            // Draw ghosts for transformed components
+            drawGhost(ctxR, {x: Mw1.x * lambda1, y: Mw1.y * lambda1}, '#fbbf24', canvasR);
+            drawGhost(ctxR, {x: Mw2.x * lambda2, y: Mw2.y * lambda2}, '#c084fc', canvasR);
+            // Draw parallelogram of transformed components
+            drawParallelogram(ctxR, Mw1, lambda1, Mw2, lambda2, '#fbbf24', canvasR);
+            drawParallelogram(ctxR, Mw2, lambda2, Mw1, lambda1, '#c084fc', canvasR);
+        }
+
+        // Draw transformed basis vectors Mw1, Mw2
+        drawArrow(ctxR, Mw1, '#fbbf24', 'Mw₁', canvasR);
+        drawArrow(ctxR, Mw2, '#c084fc', 'Mw₂', canvasR);
+        // Draw output vector Mv
+        const mvColor = isEigen ? '#22c55e' : '#60a5fa'; 
+        drawArrow(ctxR, Mv, mvColor, 'Mv', canvasR, false, 4);
+    }
+
+    // --- Drawing Helpers (kept same as before) ---
+    function toScreen(x, y, canvas) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        return { x: cx + x * scale, y: cy - y * scale };
+    }
+    function fromScreen(sx, sy, canvas) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        return { x: (sx - cx) / scale, y: -(sy - cy) / scale };
+    }
+    function drawGrid(ctx, w, h) {
+        ctx.clearRect(0, 0, w, h);
+        const cx = w / 2;
+        const cy = h / 2;
+        ctx.beginPath();
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        for (let x = cx % scale; x < w; x += scale) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+        for (let y = cy % scale; y < h; y += scale) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.strokeStyle = axisColor;
+        ctx.lineWidth = 2;
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+        ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+        ctx.stroke();
+    }
+    function drawArrow(ctx, vec, color, label, canvas, isDashed = false, width = 3) {
+        const s = toScreen(0, 0, canvas);
+        const e = toScreen(vec.x, vec.y, canvas);
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.setLineDash(isDashed ? [5, 5] : []);
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(e.x, e.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const angle = Math.atan2(e.y - s.y, e.x - s.x);
+        const headLen = 12 + width;
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.moveTo(e.x, e.y);
+        ctx.lineTo(e.x - headLen * Math.cos(angle - Math.PI/6), e.y - headLen * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(e.x - headLen * Math.cos(angle + Math.PI/6), e.y - headLen * Math.sin(angle + Math.PI/6));
+        ctx.fill();
+        if (label) {
+            ctx.fillStyle = "white";
+            ctx.font = "bold 16px 'JetBrains Mono', monospace";
+            ctx.fillText(label, e.x + 10, e.y + 5);
+        }
+    }
+    function drawParallelogram(ctx, base, scalar, otherBase, otherScalar, color, canvas) {
+        // Start from end of other component (p1)
+        const p1 = { x: otherBase.x * otherScalar, y: otherBase.y * otherScalar }; 
+        // End at tip of main vector v (p2)
+        const p2 = { x: p1.x + base.x * scalar, y: p1.y + base.y * scalar }; 
+        const s = toScreen(p1.x, p1.y, canvas);
+        const e = toScreen(p2.x, p2.y, canvas);
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(e.x, e.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    function drawGhost(ctx, vec, color, canvas) {
+        const s = toScreen(0, 0, canvas);
+        const e = toScreen(vec.x, vec.y, canvas);
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = 0.3;
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(e.x, e.y);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    }
+    function drawHandle(ctx, vec, color, canvas, isHovered) {
+        const p = toScreen(vec.x, vec.y, canvas);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        if (isHovered) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(255,255,255,0.5)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    }
+
+    function getMousePos(evt, canvas) {
+        const rect = canvas.getBoundingClientRect();
+        let cx, cy;
+        if (evt.touches && evt.touches.length > 0) {
+            cx = evt.touches[0].clientX;
+            cy = evt.touches[0].clientY;
+        } else {
+            cx = evt.clientX;
+            cy = evt.clientY;
+        }
+        // Calculation of mouse position relative to canvas top-left corner
+        return fromScreen(cx - rect.left, cy - rect.top, canvas);
+    }
+    function isNear(pos, vec) {
+        // Distance check squared to avoid expensive Math.sqrt. 
+        // 0.25 in math coordinates is (0.5)^2, which corresponds to 20px radius on screen (0.5 * 40 scale).
+        const dist = (pos.x - vec.x)**2 + (pos.y - vec.y)**2;
+        return dist < 0.25; 
+    }
+    function handleStart(e) {
+        if(e.target === canvasL) e.preventDefault();
+        const pos = getMousePos(e, canvasL);
+        if (isNear(pos, v)) dragging = 'v';
+        else if (isNear(pos, w1)) dragging = 'w1';
+        else if (isNear(pos, w2)) dragging = 'w2';
+        if (dragging) draw();
+    }
+    function handleMove(e) {
+        const pos = getMousePos(e, canvasL);
+        // Change cursor on hover
+        if (isNear(pos, v) || isNear(pos, w1) || isNear(pos, w2)) canvasL.style.cursor = 'pointer';
+        else canvasL.style.cursor = 'crosshair';
+        
+        if (dragging) {
+            if(e.target === canvasL) e.preventDefault();
+            
+            // Apply a small clamp to prevent values from getting too big
+            const clampedX = Math.max(-5, Math.min(5, pos.x));
+            const clampedY = Math.max(-5, Math.min(5, pos.y));
+            
+            if (dragging === 'v') v = {x: clampedX, y: clampedY};
+            if (dragging === 'w1') w1 = {x: clampedX, y: clampedY};
+            if (dragging === 'w2') w2 = {x: clampedX, y: clampedY};
+            draw();
+        }
+    }
+    function handleEnd() { dragging = null; draw(); }
+
+    // Event listeners attached to the left canvas for dragging
+    canvasL.addEventListener('mousedown', handleStart);
+    canvasL.addEventListener('touchstart', handleStart, {passive: false});
+    // Global listeners for movement and release
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchend', handleEnd);
+
+    function updateM() {
+        M.a = parseFloat(inputs.m00.value) || 0;
+        M.b = parseFloat(inputs.m01.value) || 0;
+        M.c = parseFloat(inputs.m10.value) || 0;
+        M.d = parseFloat(inputs.m11.value) || 0;
+        draw();
+    }
+    Object.values(inputs).forEach(inp => inp.addEventListener('input', updateM));
+
+    function resize() {
+        canvasL.width = containerL.clientWidth;
+        canvasL.height = containerL.clientHeight;
+        canvasR.width = containerR.clientWidth;
+        canvasR.height = containerR.clientHeight;
+        draw();
+    }
+    window.addEventListener('resize', resize);
+
+    updateM();
+    resize();
+    startInstructionSequence(); // NEW call
+    startQuestionSequence(); 
+})();
+</script>
+</body>
+</html>

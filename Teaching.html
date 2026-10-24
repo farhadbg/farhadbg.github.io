@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teaching — Farhad Babaee, University of Bristol</title>
+  <meta name="description" content="Teaching activities of Farhad Babaee at the University of Bristol, including Linear Algebra and Algebraic Geometry courses.">
+  <meta name="keywords" content="Farhad Babaee teaching, University of Bristol mathematics, linear algebra Bristol, algebraic geometry Bristol, lecture notes">
+  <meta name="author" content="Farhad Babaee">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://people.maths.bris.ac.uk/~ki18754/Teaching.html">
+  <meta property="og:title" content="Teaching — Farhad Babaee, University of Bristol">
+  <meta property="og:description" content="Linear Algebra and Algebraic Geometry courses taught by Farhad Babaee at the University of Bristol, with interactive lecture notes.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://people.maths.bris.ac.uk/~ki18754/Teaching.html">
+  <meta property="og:site_name" content="Farhad Babaee — University of Bristol">
+  <meta property="og:locale" content="en_GB">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Teaching — Farhad Babaee, University of Bristol">
+  <meta name="twitter:description" content="Courses and lecture notes (Linear Algebra, Algebraic Geometry) by Farhad Babaee at the University of Bristol.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Teaching — Farhad Babaee",
+    "url": "https://people.maths.bris.ac.uk/~ki18754/Teaching.html",
+    "description": "Teaching activities of Farhad Babaee at the University of Bristol.",
+    "inLanguage": "en-GB",
+    "isPartOf": { "@type": "WebSite", "name": "Farhad Babaee — University of Bristol", "url": "https://people.maths.bris.ac.uk/~ki18754/" },
+    "author": { "@type": "Person", "name": "Farhad Babaee", "url": "https://people.maths.bris.ac.uk/~ki18754/index.html" }
+  }
+  </script>
+
+  <!-- Bootstrap CSS -->
+  <link href="bootstrap.css" rel="stylesheet">
+  <link href="shift.css" rel="stylesheet">
+  <link href="1Main.css" rel="stylesheet">
+
+  <style>
+    body, input {
+      margin: 0;
+      padding-bottom: 10px;
+    }
+    .nav-pills .nav-link.active {
+      background-color: #007bff;
+      color: white;
+    }
+    h2 {
+      margin-top: 30px;
+      font-size: 1.5rem; /* Reduced size */
+    }
+    .container {
+      padding-top: 20px;
+    }
+    /* "Open the notes" where the notes come in two versions: a pulldown, with no script */
+    details.notes-menu > summary {
+      display: inline-block;
+      cursor: pointer;
+      color: #428bca;
+      list-style: none;
+    }
+    details.notes-menu > summary::-webkit-details-marker { display: none; }
+    details.notes-menu > summary::after { content: " \25BE"; }
+    details.notes-menu[open] > summary::after { content: " \25B4"; }
+    details.notes-menu > summary:hover { text-decoration: underline; }
+    details.notes-menu ul { margin: .3rem 0 0; padding-left: 1.4rem; }
+    details.notes-menu li { margin: .2rem 0; }
+    /* The notes' pictures. Only the picture itself opens anything: the box around it fits it, so
+       the space beside it is not a link. Under the pointer the picture lifts a little. */
+    a.thumb, details.notes-pick { display: inline-block; vertical-align: top; max-width: 600px; width: 100%; }
+    a.thumb img, details.notes-pick > summary img { transition: transform .18s ease, box-shadow .18s ease; }
+    a.thumb:hover img, details.notes-pick > summary:hover img {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      a.thumb img, details.notes-pick > summary img { transition: none; }
+    }
+    /* A picture for notes in two versions: a click on it shows the two over it, and a click on the
+       picture around them shuts them again (the veil lets clicks through to the picture). */
+    details.notes-pick { position: relative; margin-top: .6rem; }
+    details.notes-pick > summary { display: block; list-style: none; cursor: pointer; }
+    details.notes-pick > summary::-webkit-details-marker { display: none; }
+    details.notes-pick[open] > summary:hover img { transform: none; box-shadow: none; }
+    details.notes-pick .pick {
+      position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center;
+      background: rgba(255, 255, 255, .72); border-radius: 4px; pointer-events: none;
+    }
+    details.notes-pick .pick a { pointer-events: auto; }
+  </style>
+  
+
+  <script src="jquery-latest.js"></script>
+</head>
+
+<body>
+
+  <!-- Navigation -->
+  <div class="nav">
+    <div class="container">
+	      <ul class="nav nav-pills">
+	        <li><a href="index.html">Home</a></li>
+	        <!-- <li><a href="News_Talks.html">News/Talks</a></li> -->
+	        <li><a href="Publications.html">Research</a></li>
+	        <li class="active"><a href="Teaching.html">Teaching</a></li>
+	        <li><a href="math_fun.html">Math Fun!</a></li>
+	        <li><a href="RSA-outreach/RSA-outreach.html">RSA Crypto</a></li>
+	      </ul>
+	    </div>
+	  </div>
+
+<!-- Main content -->
+<div class="container">
+
+  <h2>Blowing Up in Algebraic Geometry &mdash; video lecture</h2>
+  <p>
+    A recorded lecture on blowing up singularities.
+    <a href="https://www.youtube.com/watch?v=Gkkh_nl7ETw" target="_blank" rel="noopener">
+      Watch on YouTube
+    </a>
+  </p>
+  <div style="max-width:600px; margin-top:.6rem; border:1px solid #ddd; border-radius:4px; overflow:hidden;">
+    <div style="position:relative; width:100%; padding-top:56.25%;">
+      <iframe src="https://www.youtube.com/embed/Gkkh_nl7ETw"
+              title="Blowing Up in Algebraic Geometry"
+              style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
+              allowfullscreen loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <h2>Implication, proof and light switches</h2>
+  <p>
+    Notes on truth tables, proof by contradiction, by contrapositive and by induction, and light
+    switches. In two versions: a more interactive one, and a simpler one that reads well on a
+    phone.
+  </p>
+  <details class="notes-menu">
+    <summary>Open the notes</summary>
+    <ul>
+      <li><a href="intro_pure/intro_pure.html">More interactive version</a></li>
+      <li><a href="intro_pure/intro_pure_mobile.html">Simpler version</a></li>
+    </ul>
+  </details>
+  <details class="notes-pick">
+    <summary title="Choose a version of the notes">
+    <img src="thumbs/intro-pure.gif" width="600" height="338"
+         alt="From the notes, animated: a row of dominoes falling, for proof by induction, and two light-switch circuits checked on every combination of their switches, a statement and its contrapositive"
+         style="display:block; max-width:600px; width:100%; height:auto; border:1px solid #ddd; border-radius:4px;">
+    </summary>
+    <div class="pick">
+      <a class="btn btn-primary" href="intro_pure/intro_pure.html">More interactive version</a>
+      <a class="btn btn-default" href="intro_pure/intro_pure_mobile.html">Simpler version</a>
+    </div>
+  </details>
+
+  <h2>Linear Algebra notes</h2>
+  <p>
+    Interactive lecture notes with figures you can drag: vectors in Euclidean space, the dot
+    product and the norm, complex numbers, and systems of linear equations.
+    <a href="LA_notes/LA_notes.html">Open the notes</a>
+  </p>
+  <a class="thumb" href="LA_notes/LA_notes.html">
+    <img src="thumbs/la-notes.png" width="600" height="338"
+         alt="The linear algebra notes, showing three planes meeting at a point"
+         style="display:block; max-width:600px; width:100%; height:auto; margin-top:.6rem; border:1px solid #ddd; border-radius:4px;">
+  </a>
+
+  <h2>Algebraic Geometry notes</h2>
+  <p>
+    Interactive lecture notes: affine and projective varieties, the Zariski topology, the
+    Nullstellensatz, morphisms, dimension, smoothness and toric geometry.
+    <a href="AG_notes/main.html">Open the notes</a>
+  </p>
+  <a class="thumb" href="AG_notes/main.html">
+    <img src="thumbs/ag-notes.png" width="600" height="338"
+         alt="The algebraic geometry notes, with their contents sidebar"
+         style="display:block; max-width:600px; width:100%; height:auto; margin-top:.6rem; border:1px solid #ddd; border-radius:4px;">
+  </a>
+
+</div>
+
+<script src="bootstrap.bundle.js"></script>
+
+</body>
+</html>

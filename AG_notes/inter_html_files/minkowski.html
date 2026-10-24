@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minkowski Sum Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow: hidden;
+            touch-action: none;
+        }
+        canvas {
+            cursor: crosshair;
+        }
+        .glass {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+    <script src="diagram-scroll.js"></script>
+</head>
+<body class="flex flex-col h-screen">
+
+    <header class="p-6 glass z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-500 tracking-tight">
+                Minkowski sum of a star and disc of radius r
+            </h1>
+            <div class="mt-2 flex items-center gap-3">
+                <span class="text-slate-500 text-xs font-bold uppercase tracking-widest">Definition:</span>
+                <p class="text-cyan-400/90 math-font text-lg font-bold">
+                    A + B = { a + b | a ∈ A, b ∈ B }
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-6 self-end md:self-center bg-slate-900/50 p-2 px-4 rounded-2xl border border-white/5">
+            <div class="flex flex-col items-center">
+                <input type="range" id="radiusSlider" min="0.1" max="2.5" step="0.01" value="1.0" 
+                    class="w-32 md:w-48 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+                <div id="outerRadiusLabel" class="text-[10px] math-font font-bold text-cyan-400 mt-1 uppercase tracking-tighter">r = 1.00</div>
+            </div>
+            <button id="resetBtn" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl transition-all text-xs font-bold border border-slate-700 active:scale-95 text-white">
+                RESET
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow relative overflow-hidden">
+        <canvas id="minkowskiCanvas" class="w-full h-full"></canvas>
+        <!-- Removed the old floating slider card from here -->
+    </main>
+
+    <script>
+        const canvas = document.getElementById('minkowskiCanvas');
+        const ctx = canvas.getContext('2d');
+        const outerLabel = document.getElementById('outerRadiusLabel');
+        const radiusSlider = document.getElementById('radiusSlider');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let width, height, centerX, centerY;
+        let starPoints = [];
+        const STAR_BASE_OUTER = 140;
+        const STAR_BASE_INNER = 60;
+        const NUM_POINTS = 5;
+        const UNIT_SCALE = 60; 
+
+        let outerR = 1.0; 
+        let traceAngle = 0;
+
+        function initCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+            generateStar();
+        }
+
+        function generateStar() {
+            starPoints = [];
+            for (let i = 0; i < NUM_POINTS * 2; i++) {
+                const angle = (i * Math.PI) / NUM_POINTS - Math.PI / 2;
+                const r = i % 2 === 0 ? STAR_BASE_OUTER : STAR_BASE_INNER;
+                starPoints.push({
+                    x: centerX + Math.cos(angle) * r,
+                    y: centerY + Math.sin(angle) * r,
+                    angle: angle,
+                    dist: r
+                });
+            }
+        }
+
+        function drawMinkowskiSum(points, r, strokeColor, fillColor) {
+            if (r <= 0) return;
+            
+            ctx.beginPath();
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = r * 2;
+            ctx.strokeStyle = strokeColor;
+            
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.closePath();
+            
+            ctx.stroke();
+            if (fillColor) {
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Subtle Grid for spatial reference
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,height); ctx.stroke(); }
+            for(let i=0; i<height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(width,i); ctx.stroke(); }
+
+            const vOuterR = outerR * UNIT_SCALE;
+
+            // 1. Minkowski Sum Area (Dilation)
+            drawMinkowskiSum(starPoints, vOuterR, 'rgba(34, 211, 238, 0.15)', 'rgba(34, 211, 238, 0.05)');
+            
+            // 2. Boundary Line of the Sum
+            ctx.save();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)';
+            drawMinkowskiSum(starPoints, vOuterR, 'rgba(34, 211, 238, 0.6)', null);
+            ctx.restore();
+
+            // 3. The Original Set A (The Star)
+            ctx.beginPath();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.moveTo(starPoints[0].x, starPoints[0].y);
+            for (let i = 1; i < starPoints.length; i++) {
+                ctx.lineTo(starPoints[i].x, starPoints[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 4. Trace the disc path along the boundary of A
+            drawTracer(vOuterR, '#22d3ee');
+        }
+
+        function drawTracer(r, color) {
+            traceAngle += 0.01;
+            
+            const segments = starPoints.length;
+            const progress = (traceAngle % (Math.PI * 2)) / (Math.PI * 2);
+            const totalIndex = progress * segments;
+            const i1 = Math.floor(totalIndex) % segments;
+            const i2 = (i1 + 1) % segments;
+            const segmentProgress = totalIndex - Math.floor(totalIndex);
+
+            const p1 = starPoints[i1];
+            const p2 = starPoints[i2];
+
+            const tx = p1.x + (p2.x - p1.x) * segmentProgress;
+            const ty = p1.y + (p2.y - p1.y) * segmentProgress;
+
+            // Draw the disc B centered at point a ∈ A
+            ctx.beginPath();
+            ctx.arc(tx, ty, r, 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw vector point 'a'
+            ctx.beginPath();
+            ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        radiusSlider.addEventListener('input', (e) => {
+            outerR = parseFloat(e.target.value);
+            outerLabel.innerText = `r = ${outerR.toFixed(2)}`;
+        });
+
+        resetBtn.onclick = () => {
+            outerR = 1.0;
+            radiusSlider.value = 1.0;
+            outerLabel.innerText = `r = 1.00`;
+        };
+
+        window.addEventListener('resize', initCanvas);
+        window.onload = () => {
+            initCanvas();
+            animateWhileVisible(canvas, render);
+        };
+    </script>
+</body>
+</html>

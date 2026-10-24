@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive explanation of why (n² + 1)/(2n − 1) is unbounded below, with integer and real domains, zoom, and linked coordinates.">
+  <title>An infimum of −∞ · Introduction to Pure Mathematics</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'svg'] },
+      chtml: { scale: 1 }
+    };
+    try {
+      const savedTheme = localStorage.getItem('intro-pure-infimum-theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
+    } catch (_) { /* The page also works when browser storage is unavailable. */ }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f6f2; --surface: #ffffff; --ink: #23343b; --muted: #5b6a70;
+      --rule: #d9dfdd; --wash: #edf2ef; --accent: #22685c; --accent-wash: #e5f1eb;
+      --plot-grid: #e5eae8; --plot-axis: #84948e; --plot-ink: #344b46; --plot-faint: #71827b;
+      --curve: #246a94; --selected: #b44d1f; --half: #4878a8; --third: #267c72;
+      --quarter: #9271a8; --bound: #b46157;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --page: #152023; --surface: #1c2b2e; --ink: #e4eeeb; --muted: #a7bab5;
+      --rule: #354a47; --wash: #243735; --accent: #91ccba; --accent-wash: #293f39;
+      --plot-grid: #2a403d; --plot-axis: #7c9991; --plot-ink: #d4e6df; --plot-faint: #a0b9af;
+      --curve: #82bfe5; --selected: #ffb27e; --half: #93b7e5; --third: #78cfb7;
+      --quarter: #bda0d7; --bound: #eaa79d;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --page: #152023; --surface: #1c2b2e; --ink: #e4eeeb; --muted: #a7bab5;
+        --rule: #354a47; --wash: #243735; --accent: #91ccba; --accent-wash: #293f39;
+        --plot-grid: #2a403d; --plot-axis: #7c9991; --plot-ink: #d4e6df; --plot-faint: #a0b9af;
+        --curve: #82bfe5; --selected: #ffb27e; --half: #93b7e5; --third: #78cfb7;
+        --quarter: #bda0d7; --bound: #eaa79d;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--page); color: var(--ink); font: 18px/1.75 Georgia, 'Iowan Old Style', 'Times New Roman', serif; }
+    button, input, .ui { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    button, input { font-size: 15px; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    a:hover { text-decoration-thickness: 2px; }
+    button { min-height: 42px; padding: 8px 13px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; line-height: 1.3; }
+    button:hover { background: var(--wash); border-color: var(--accent); }
+    button:disabled { opacity: .45; cursor: default; }
+    :focus-visible { outline: 3px solid var(--selected); outline-offset: 3px; }
+    input[type="number"] { min-height: 42px; width: 105px; max-width: 100%; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); }
+    input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; max-width: 1080px; margin: 0 auto; padding: 16px 28px; font-size: 13px; }
+    .topbar a { text-decoration: none; }
+    .topbar-tools { display: flex; align-items: center; gap: 16px; }
+    #theme-toggle { min-height: 36px; padding: 6px 11px; font-size: 13px; }
+    header { max-width: 880px; margin: 0 auto; padding: 52px 28px 32px; }
+    .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 12px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-weight: 500; font-size: clamp(34px, 5.4vw, 57px); letter-spacing: -.035em; line-height: 1.15; }
+    .subtitle { color: var(--muted); font-size: 19px; margin: 16px 0 0; }
+    main { max-width: 1080px; margin: 0 auto; padding: 0 28px 60px; }
+    .prose { max-width: 824px; margin: 0 auto; }
+    h2 { font-size: 27px; font-weight: 500; line-height: 1.3; margin: 36px 0 16px; }
+    p { margin: 15px 0; }
+    .equation { overflow-x: auto; overflow-y: hidden; padding: 4px 0; max-width: 100%; }
+    mjx-container[display="true"] { margin: .8em 0 !important; }
+    .statement { margin: 8px 0 28px; border-block: 1px solid var(--rule); padding: 10px 12px; text-align: center; }
+    .math-note { border-left: 3px solid var(--accent); padding: 2px 0 2px 18px; color: var(--muted); font-size: 16px; margin: 24px 0; }
+    .explorer { margin: 36px 0 40px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); overflow: hidden; }
+    .explorer-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 22px 24px 12px; }
+    .explorer-head h2 { margin: 0 0 3px; font-size: 24px; }
+    .small { font-size: 13px; line-height: 1.5; color: var(--muted); }
+    .explorer-head p { margin: 0; }
+    .domain-choice { margin: 0; padding: 0; border: 0; display: flex; gap: 6px; }
+    .domain-choice legend { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .domain-choice label { display: flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 6px; min-height: 42px; padding: 7px 10px; cursor: pointer; font-size: 14px; }
+    .domain-choice label:has(input:checked) { border-color: var(--accent); background: var(--accent-wash); color: var(--accent); }
+    .domain-choice input { margin: 0; width: 16px; height: 16px; }
+    .plot-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 24px; }
+    .button-group { display: flex; flex-wrap: wrap; gap: 6px; }
+    .zoom-button { min-width: 42px; font-size: 21px; padding: 5px 12px; }
+    .plot-toolbar .small { font-size: 12px; }
+    #plot-stage { width: 100%; touch-action: none; }
+    #function-plot { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-user-select: none; touch-action: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #x-marker { cursor: ew-resize; }
+    #x-marker:focus { outline: none; }
+    #x-marker:focus-visible { filter: drop-shadow(0 0 4px var(--selected)); }
+    .plot-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; padding: 0 24px 15px; list-style: none; font-size: 13px; }
+    .plot-legend li { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .swatch { display: inline-block; width: 22px; border-top: 2px solid currentColor; }
+    .swatch.dots { border-top: 4px dotted currentColor; }
+    .swatch.dashed { border-top-style: dashed; }
+    .legend-f { color: var(--curve); } .legend-half { color: var(--half); } .legend-third { color: var(--third); }
+    .legend-quarter { color: var(--quarter); } .legend-bound { color: var(--bound); }
+    .plot-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 22px; padding: 16px 24px; border-top: 1px solid var(--rule); background: var(--wash); font-size: 14px; }
+    .number-field { display: inline-flex; align-items: center; gap: 8px; }
+    .check-field { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; cursor: pointer; }
+    .check-field input { width: 17px; height: 17px; margin: 0; }
+    .coordinates { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 16px; padding: 19px 24px; border-top: 1px solid var(--rule); }
+    .coordinate-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+    .coordinates output { font: 500 18px/1.4 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; overflow-wrap: anywhere; }
+    .coordinates .pair { color: var(--selected); }
+    .plot-caption { padding: 0 24px 20px; }
+    .plot-caption p { margin: 5px 0; }
+    #point-status { color: var(--selected); }
+    .proof { margin: 24px 0; border-left: 3px solid var(--accent); padding: 0 0 0 20px; }
+    .proof > summary { font-style: italic; font-weight: 600; cursor: pointer; list-style: none; padding: 8px 0; }
+    .proof > summary::-webkit-details-marker { display: none; }
+    .proof > summary::before { content: '\25B8'; color: var(--accent); display: inline-block; margin-right: 10px; transition: transform .15s; }
+    .proof[open] > summary::before { transform: rotate(90deg); }
+    .proof .qed { float: right; }
+    .question { margin: 32px 0 12px; border: 1px solid var(--rule); border-left: 3px solid var(--selected); border-radius: 0 8px 8px 0; background: var(--surface); padding: 18px 22px; }
+    .question h2 { font-size: 22px; margin: 0; }
+    .question p { margin: 8px 0 0; }
+    footer { max-width: 824px; border-top: 1px solid var(--rule); margin: 0 auto; padding: 20px 0 40px; font-size: 13px; color: var(--muted); }
+    footer a + a { margin-left: 18px; }
+    @media (max-width: 600px) {
+      body { font-size: 17px; }
+      .topbar { padding: 12px 16px; gap: 8px; }
+      .topbar-tools { gap: 10px; }
+      .topbar .pdf-link { display: none; }
+      header { padding: 32px 18px 24px; }
+      main { padding: 0 14px 36px; }
+      .subtitle { font-size: 17px; }
+      h2 { font-size: 24px; }
+      .explorer { margin-inline: -5px; }
+      .explorer-head { padding: 18px 14px 10px; gap: 12px; }
+      .explorer-head h2 { font-size: 22px; }
+      .domain-choice { width: 100%; }
+      .domain-choice label { flex: 1; justify-content: center; }
+      .plot-toolbar { padding: 8px 12px; }
+      .plot-toolbar .small { width: 100%; }
+      .plot-legend { padding: 0 14px 14px; gap: 5px 14px; }
+      .plot-controls { padding: 12px 14px; gap: 10px 16px; }
+      .coordinates { padding: 16px 14px; gap: 12px; grid-template-columns: 1fr 1fr; }
+      .coordinates .coordinate-pair { grid-column: 1 / -1; }
+      .coordinates output { font-size: 17px; }
+      .plot-caption { padding: 0 14px 16px; }
+      .question { padding: 16px; }
+      .proof { padding-left: 13px; }
+      footer { margin-inline: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .proof > summary::before { transition: none; } }
+    @media print {
+      body { background: white; color: black; font-size: 11pt; }
+      .topbar, .plot-toolbar, .plot-controls, .domain-choice, #theme-toggle { display: none; }
+      header { padding-top: 0; }
+      .explorer { break-inside: avoid; }
+      .proof > summary { display: none; }
+      details.proof > * { display: block; }
+      footer { padding-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topbar ui" aria-label="Page navigation">
+    <a href="intro_pure.html">← Introduction to Pure Mathematics</a>
+    <div class="topbar-tools">
+      <a class="pdf-link" href="infimum_and_supremum.pdf">PDF</a>
+      <button id="theme-toggle" type="button" aria-label="Switch colour theme">Theme</button>
+    </div>
+  </nav>
+  <header>
+    <p class="eyebrow ui">Bounds &amp; the Archimedean property</p>
+    <h1>An infimum of −∞</h1>
+    <p class="subtitle">Following a sequence as far down as we please.</p>
+  </header>
+  <main>
+    <div class="prose">
+      <div class="statement equation">
+        \[ \inf_{n\in\mathbb{Z}}\left\{\frac{n^2+1}{2n-1}\right\}=-\infty. \]
+      </div>
+      <h2 id="intuition">Intuition</h2>
+      <p>Consider the function</p>
+      <div class="equation">\[ f:\mathbb{R}\setminus\{\tfrac12\}\to\mathbb{R}, \qquad f(x)=\frac{x^2+1}{2x-1}. \]</div>
+      <p>For large positive \(x\), dividing numerator and denominator by \(x\) gives</p>
+      <div class="equation">\[ f(x)=\frac{x+\frac1x}{2-\frac1x}\approx\frac{x}{2}. \]</div>
+      <p>So, when \(|x|\) is large, \(f(x)\) behaves like \(\tfrac12x\). The same asymptotic comparison holds as \(x\to-\infty\). For negative \(x\), the line with slope \(\tfrac12\) lies below those with slopes \(\tfrac13\) and \(\tfrac14\):</p>
+      <div class="equation">\[ \tfrac12x &lt; \tfrac13x &lt; \tfrac14x \qquad (x&lt;0). \]</div>
+      <p>Consequently, for sufficiently negative \(x\), \(f(x)\) also falls below the lines \(y=\tfrac13x\) and \(y=\tfrac14x\). This explains why, for any real \(r\), we can find a negative integer \(n_1\) such that</p>
+      <div class="equation">\[ f(n_1)&lt;\tfrac13n_1&lt;r. \]</div>
+      <p>Either comparison line, and many others, can be used to prove that the values are unbounded below.</p>
+    </div>
+
+    <figure class="explorer" aria-labelledby="explorer-title" aria-describedby="plot-help">
+      <div class="explorer-head">
+        <div>
+          <h2 id="explorer-title">Explore the function</h2>
+          <p class="small ui">f(x) = (x² + 1) / (2x − 1)</p>
+        </div>
+        <fieldset class="domain-choice ui">
+          <legend>Domain</legend>
+          <label><input type="radio" name="domain" value="integers" checked> Integers ℤ</label>
+          <label><input type="radio" name="domain" value="reals"> Reals ℝ ∖ {½}</label>
+        </fieldset>
+      </div>
+      <div class="plot-toolbar ui">
+        <div class="button-group" aria-label="Zoom controls">
+          <button id="zoom-in" class="zoom-button" type="button" aria-label="Zoom in">+</button>
+          <button id="zoom-out" class="zoom-button" type="button" aria-label="Zoom out">−</button>
+          <button id="reset-view" type="button">Reset view</button>
+        </div>
+        <div class="button-group" aria-label="Explore the tails">
+          <button id="view-negative" type="button">x → −∞</button>
+          <button id="view-positive" type="button">x → +∞</button>
+        </div>
+        <span id="viewport-label" class="small"></span>
+      </div>
+      <div id="plot-stage">
+        <svg id="function-plot" role="group" aria-label="Interactive graph of f, with a movable x input and corresponding y output"></svg>
+      </div>
+      <ul class="plot-legend ui" aria-label="Graph legend">
+        <li class="legend-f"><span class="swatch"></span>f(x)</li>
+        <li class="legend-half"><span class="swatch dashed"></span>x/2</li>
+        <li class="legend-third"><span class="swatch"></span>x/3</li>
+        <li class="legend-quarter"><span class="swatch"></span>x/4</li>
+        <li class="legend-bound"><span class="swatch dashed"></span>y = r</li>
+      </ul>
+      <div class="plot-controls ui">
+        <label class="number-field" for="x-value">x <input id="x-value" type="number" value="-6" step="1" inputmode="decimal" aria-describedby="domain-note"></label>
+        <label class="number-field" for="r-value">r <input id="r-value" type="number" value="-1" step="any" inputmode="decimal"></label>
+        <label class="check-field"><input id="show-comparisons" type="checkbox" checked> Comparison lines</label>
+        <label class="check-field"><input id="show-bound" type="checkbox" checked> Bound y = r</label>
+      </div>
+      <div class="coordinates ui" aria-label="Selected coordinates">
+        <div><span class="coordinate-label">Input on the x-axis</span><output id="selected-x" for="x-value">−6</output></div>
+        <div><span class="coordinate-label">Output on the y-axis</span><output id="selected-y" for="x-value">−2.846154</output></div>
+        <div class="coordinate-pair"><span class="coordinate-label">Point on the graph</span><output id="selected-pair" class="pair" for="x-value">(−6, −2.846154)</output></div>
+      </div>
+      <figcaption id="plot-help" class="plot-caption small ui">
+        <p>Drag the point on the bottom x-axis to move the point on the graph and its output on the right y-axis. Use the arrow keys when the x-axis point is focused, or enter x above.</p>
+        <p>Use + and − to zoom. Drag the graph background to pan; the two tail buttons take you further along the function.</p>
+        <p id="domain-note">Integer mode: x snaps to integers, and only the sequence values are plotted.</p>
+        <p id="point-status" role="status" aria-live="polite"></p>
+      </figcaption>
+      <noscript><p class="math-note">Enable JavaScript to use the interactive figure. The argument below does not require it.</p></noscript>
+    </figure>
+
+    <div class="prose">
+      <p class="math-note">The real-domain graph excludes \(x=\tfrac12\), where the denominator vanishes. Every integer is in the domain. The comparison \(f(x)\approx x/2\) describes the tails; the exact slant asymptote is \(y=x/2+1/4\).</p>
+      <h2 id="formal-argument">Formal argument</h2>
+      <p>We will show that, for every real \(r\), some integer \(n_1\) satisfies \(f(n_1)&lt;r\).</p>
+      <details class="proof">
+        <summary>Proof</summary>
+        <p>For \(n\le0\), the denominator \(2n-1\) is negative. Compute:</p>
+        <div class="equation">
+          \[ \begin{aligned}
+            f(n)-\frac n3
+              &amp;=\frac{(n^2+1)-\frac n3(2n-1)}{2n-1}\\[4pt]
+              &amp;=\frac{n^2+n+3}{3(2n-1)}.
+          \end{aligned} \]
+        </div>
+        <p>The numerator is positive for every real \(n\), since</p>
+        <div class="equation">\[ n^2+n+3=\left(n+\tfrac12\right)^2+\tfrac{11}{4}&gt;0. \]</div>
+        <p>Thus</p>
+        <div class="equation">\[ \boxed{f(n)&lt;\frac n3\quad\text{for all integers }n\le0.} \]</div>
+        <p>Now let \(r\in\mathbb{R}\). By the Archimedean property, there exists a negative integer \(n_1\) such that \(n_1/3&lt;r\). Then</p>
+        <div class="equation">\[ f(n_1)&lt;\frac{n_1}{3}&lt;r. \]</div>
+        <p>So the sequence takes values smaller than any prescribed real number. Therefore \(\inf_{n\in\mathbb{Z}}f(n)=-\infty\).<span class="qed">&#9633;</span></p>
+      </details>
+      <aside class="question" aria-labelledby="question-title">
+        <h2 id="question-title">Your turn</h2>
+        <p>Can you use a similar argument to show that</p>
+        <div class="equation">\[ \sup_{n\in\mathbb{Z}}\left\{\frac{n^2+1}{2n-1}\right\}=+\infty? \]</div>
+      </aside>
+    </div>
+  </main>
+  <footer class="ui">
+    <a href="infimum_and_supremum.tex" download>LaTeX source</a>
+    <a href="infimum_and_supremum.pdf">Printable PDF</a>
+  </footer>
+  <script>
+    (() => {
+      const button = document.getElementById('theme-toggle');
+      const isDark = () => document.documentElement.dataset.theme === 'dark' ||
+        (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      function updateLabel() { button.textContent = isDark() ? 'Light theme' : 'Dark theme'; }
+      button.addEventListener('click', () => {
+        const theme = isDark() ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+        try { localStorage.setItem('intro-pure-infimum-theme', theme); } catch (_) {}
+        updateLabel();
+      });
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateLabel);
+      updateLabel();
+    })();
+  </script>
+  <script>
+(() => {
+  'use strict';
+  const svg = document.getElementById('function-plot');
+  const stage = document.getElementById('plot-stage');
+  if (!svg || !stage) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const byId = (id) => document.getElementById(id);
+  const controls = {
+    x: byId('x-value'), r: byId('r-value'), comparisons: byId('show-comparisons'), bound: byId('show-bound'),
+    zoomIn: byId('zoom-in'), zoomOut: byId('zoom-out'), reset: byId('reset-view'),
+    negative: byId('view-negative'), positive: byId('view-positive')
+  };
+  const initialView = { xMin: -14, xMax: 8, yMin: -9, yMax: 6 };
+  const state = {
+    ...initialView,
+    x: Number.isFinite(Number(controls.x?.value)) ? Number(controls.x.value) : -6,
+    r: Number.isFinite(Number(controls.r?.value)) ? Number(controls.r.value) : -1,
+    domain: document.querySelector('input[name="domain"]:checked')?.value || 'integers',
+    showComparisons: controls.comparisons?.checked ?? true,
+    showBound: controls.bound?.checked ?? true
+  };
+  const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+  const f = (x) => x === 0.5 ? NaN : x / 2 + 0.25 + 0.625 / (x - 0.5);
+  const snap = (x) => state.domain === 'integers' ? Math.round(x) : x;
+  const clean = (x) => Math.abs(x) < 1e-12 ? 0 : x;
+  function format(value, digits = 8) {
+    if (!Number.isFinite(value)) return 'undefined';
+    value = clean(value);
+    if (value === 0) return '0';
+    const absolute = Math.abs(value);
+    if (absolute >= 10000000 || absolute < 0.00001) return value.toExponential(3).replace('e+', 'e');
+    return String(Number(value.toPrecision(digits)));
+  }
+  function node(tag, attrs = {}, parent) {
+    const item = document.createElementNS(NS, tag);
+    for (const [key, value] of Object.entries(attrs)) item.setAttribute(key, String(value));
+    if (parent) parent.appendChild(item);
+    return item;
+  }
+  function label(text, attrs = {}, parent) {
+    const item = node('text', attrs, parent);
+    item.textContent = text;
+    return item;
+  }
+  function updateText(id, value) {
+    const item = byId(id);
+    if (item && item.textContent !== value) item.textContent = value;
+  }
+  svg.replaceChildren();
+  svg.setAttribute('role', 'group');
+  svg.setAttribute('aria-labelledby', 'function-plot-title function-plot-description');
+  svg.style.display = 'block';
+  svg.style.width = '100%';
+  svg.style.touchAction = 'none';
+  svg.style.userSelect = 'none';
+  const title = node('title', { id: 'function-plot-title' }, svg);
+  title.textContent = 'Interactive graph of f(x) = (x² + 1) / (2x − 1)';
+  const description = node('desc', { id: 'function-plot-description' }, svg);
+  description.textContent = 'Drag the point on the bottom x-axis to choose x. The matching output appears on the right y-axis and on the graph. Use arrow keys on the x-axis point, zoom buttons, or drag the graph to pan. The function is undefined at x = 0.5.';
+  const defs = node('defs', {}, svg);
+  const clip = node('clipPath', { id: 'function-plot-clip' }, defs);
+  const clipRect = node('rect', {}, clip);
+  const background = node('rect', { fill: 'var(--surface, #fff)', rx: 5, 'data-plot-background': 'true' }, svg);
+  const grid = node('g', { 'aria-hidden': 'true' }, svg);
+  const clipped = node('g', { 'clip-path': 'url(#function-plot-clip)', 'aria-hidden': 'true' }, svg);
+  const comparisons = node('g', { id: 'comparison-layer' }, clipped);
+  const boundLayer = node('g', { id: 'bound-layer' }, clipped);
+  const functionLayer = node('g', { id: 'function-layer' }, clipped);
+  const projections = node('g', { id: 'projection-lines', stroke: 'var(--selected, #d85b2f)', 'stroke-width': 1.5, 'stroke-dasharray': '5 5', fill: 'none' }, svg);
+  const curvePoint = node('circle', { id: 'curve-point', r: 6.5, fill: 'var(--selected, #d85b2f)', stroke: 'var(--surface, white)', 'stroke-width': 2.5 }, svg);
+  const axes = node('g', { 'aria-hidden': 'true' }, svg);
+  const xMarker = node('g', {
+    id: 'x-marker', role: 'slider', tabindex: 0, 'aria-label': 'Selected x value; use left and right arrow keys',
+    'aria-orientation': 'horizontal', cursor: 'ew-resize'
+  }, svg);
+  const xHit = node('circle', { r: 21, fill: 'transparent' }, xMarker);
+  const xFocus = node('circle', { r: 14, fill: 'none', stroke: 'var(--selected, #d85b2f)', 'stroke-width': 2, opacity: 0 }, xMarker);
+  const xShape = node('path', { fill: 'var(--selected, #d85b2f)', stroke: 'var(--surface, white)', 'stroke-width': 2 }, xMarker);
+  const yMarker = node('g', { id: 'y-marker', 'aria-hidden': 'true' }, svg);
+  const yShape = node('path', { fill: 'var(--selected, #d85b2f)', stroke: 'var(--surface, white)', 'stroke-width': 2 }, yMarker);
+  let layout = null;
+  let drag = null;
+  let renderPending = false;
+  function requestRender() {
+    if (renderPending) return;
+    renderPending = true;
+    requestAnimationFrame(() => { renderPending = false; render(); });
+  }
+  function niceTicks(min, max, count) {
+    const rough = (max - min) / Math.max(2, count);
+    const base = 10 ** Math.floor(Math.log10(rough));
+    const fraction = rough / base;
+    const step = (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10) * base;
+    const values = [];
+    for (let i = Math.ceil(min / step), end = Math.floor(max / step); i <= end && values.length < 30; i += 1) values.push(clean(i * step));
+    return values;
+  }
+  function circlePath(radius) {
+    return `M ${-radius} 0 a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 ${-radius * 2} 0`;
+  }
+  function setInputValue(input, value) {
+    if (input && document.activeElement !== input) input.value = format(value, 12);
+  }
+  function render() {
+    const width = Math.max(280, Math.round(stage.getBoundingClientRect().width || 760));
+    const height = width < 480 ? 390 : Math.round(clamp(width * 0.57, 400, 530));
+    layout = { width, height, left: width < 480 ? 24 : 39, top: 26, right: width - (width < 480 ? 74 : 90), bottom: height - 88 };
+    layout.plotWidth = layout.right - layout.left;
+    layout.plotHeight = layout.bottom - layout.top;
+    layout.inputY = layout.bottom + 44;
+    layout.outputX = layout.right + 33;
+    const L = layout;
+    const xPixel = (x) => L.left + (x - state.xMin) / (state.xMax - state.xMin) * L.plotWidth;
+    const yPixel = (y) => L.bottom - (y - state.yMin) / (state.yMax - state.yMin) * L.plotHeight;
+    const coordinate = (value) => String(Number(value.toFixed(3)));
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('height', height);
+    Object.assign(svg.dataset, { xMin: String(state.xMin), xMax: String(state.xMax), yMin: String(state.yMin), yMax: String(state.yMax), domain: state.domain });
+    for (const item of [clipRect, background]) {
+      item.setAttribute('x', L.left); item.setAttribute('y', L.top);
+      item.setAttribute('width', L.plotWidth); item.setAttribute('height', L.plotHeight);
+    }
+    background.style.cursor = drag?.kind === 'pan' ? 'grabbing' : 'grab';
+    grid.replaceChildren();
+    axes.replaceChildren();
+    const xTicks = niceTicks(state.xMin, state.xMax, Math.max(3, Math.floor(L.plotWidth / 65)));
+    const yTicks = niceTicks(state.yMin, state.yMax, Math.max(3, Math.floor(L.plotHeight / 52)));
+    const textAttrs = { fill: 'var(--plot-ink, #334155)', 'font-size': 12, 'font-family': 'inherit' };
+    for (const x of xTicks) {
+      const px = xPixel(x);
+      node('line', { x1: px, x2: px, y1: L.top, y2: L.bottom, stroke: x === 0 ? 'var(--plot-axis, #94a3b8)' : 'var(--plot-grid, #e5e7eb)', 'stroke-width': x === 0 ? 1.3 : 1 }, grid);
+      node('line', { x1: px, x2: px, y1: L.inputY - 4, y2: L.inputY + 4, stroke: 'var(--plot-axis, #64748b)' }, axes);
+      label(format(x, 5), { ...textAttrs, x: px, y: L.inputY + 23, 'text-anchor': 'middle' }, axes);
+    }
+    for (const y of yTicks) {
+      const py = yPixel(y);
+      node('line', { x1: L.left, x2: L.right, y1: py, y2: py, stroke: y === 0 ? 'var(--plot-axis, #94a3b8)' : 'var(--plot-grid, #e5e7eb)', 'stroke-width': y === 0 ? 1.3 : 1 }, grid);
+      node('line', { x1: L.outputX - 4, x2: L.outputX + 4, y1: py, y2: py, stroke: 'var(--plot-axis, #64748b)' }, axes);
+      label(format(y, 5), { ...textAttrs, x: L.outputX + 10, y: py + 4 }, axes);
+    }
+    node('rect', { x: L.left, y: L.top, width: L.plotWidth, height: L.plotHeight, fill: 'none', stroke: 'var(--plot-grid, #e5e7eb)', rx: 4 }, grid);
+    node('line', { x1: L.left, x2: L.right + 7, y1: L.inputY, y2: L.inputY, stroke: 'var(--plot-axis, #64748b)', 'stroke-width': 1.5 }, axes);
+    node('path', { d: `M ${L.right + 2} ${L.inputY - 4} L ${L.right + 8} ${L.inputY} L ${L.right + 2} ${L.inputY + 4}`, fill: 'none', stroke: 'var(--plot-axis, #64748b)', 'stroke-width': 1.5 }, axes);
+    node('line', { x1: L.outputX, x2: L.outputX, y1: L.bottom, y2: L.top - 7, stroke: 'var(--plot-axis, #64748b)', 'stroke-width': 1.5 }, axes);
+    node('path', { d: `M ${L.outputX - 4} ${L.top - 2} L ${L.outputX} ${L.top - 8} L ${L.outputX + 4} ${L.top - 2}`, fill: 'none', stroke: 'var(--plot-axis, #64748b)', 'stroke-width': 1.5 }, axes);
+    label('x', { ...textAttrs, x: L.right + 15, y: L.inputY + 5, 'font-style': 'italic', 'font-size': 15 }, axes);
+    label('y', { ...textAttrs, x: L.outputX, y: L.top - 14, 'text-anchor': 'middle', 'font-style': 'italic', 'font-size': 15 }, axes);
+    label('Drag to choose x', { ...textAttrs, fill: 'var(--plot-faint, #64748b)', x: (L.left + L.right) / 2, y: height - 5, 'text-anchor': 'middle', 'font-size': 12 }, axes);
+    comparisons.replaceChildren();
+    comparisons.style.display = state.showComparisons ? '' : 'none';
+    if (state.showComparisons) {
+      for (const [slope, color] of [[0.5, '--half'], [1 / 3, '--third'], [0.25, '--quarter']]) {
+        node('line', {
+          x1: xPixel(state.xMin), x2: xPixel(state.xMax), y1: yPixel(slope * state.xMin), y2: yPixel(slope * state.xMax),
+          stroke: `var(${color}, #64748b)`, 'stroke-width': 1.6, 'stroke-dasharray': slope === 0.5 ? '6 4' : 'none', opacity: 0.85
+        }, comparisons);
+      }
+    }
+    boundLayer.replaceChildren();
+    boundLayer.style.display = state.showBound ? '' : 'none';
+    if (state.showBound && state.r >= state.yMin && state.r <= state.yMax) {
+      node('line', { x1: L.left, x2: L.right, y1: yPixel(state.r), y2: yPixel(state.r), stroke: 'var(--bound, #bd6e34)', 'stroke-width': 1.5, 'stroke-dasharray': '7 5' }, boundLayer);
+      label(`r = ${format(state.r, 5)}`, { ...textAttrs, fill: 'var(--bound, #bd6e34)', x: L.left + 8, y: clamp(yPixel(state.r) - 8, L.top + 14, L.bottom - 5), 'font-size': 12 }, boundLayer);
+    }
+    functionLayer.replaceChildren();
+    functionLayer.dataset.kind = state.domain;
+    document.querySelector('.legend-f .swatch')?.classList.toggle('dots', state.domain === 'integers');
+    if (state.domain === 'integers') {
+      const first = Math.ceil(state.xMin);
+      const last = Math.floor(state.xMax);
+      // Every integer in the visible range is represented; the view is capped at 20,000 units.
+      const fragment = document.createDocumentFragment();
+      for (let x = first; x <= last; x += 1) {
+        const y = f(x);
+        if (y >= state.yMin && y <= state.yMax) node('circle', {
+          cx: xPixel(x), cy: yPixel(y), r: (last - first) > 150 ? 1.7 : 3.4,
+          fill: 'var(--curve, #176e80)', 'data-x': x, 'data-y': y
+        }, fragment);
+      }
+      functionLayer.appendChild(fragment);
+    } else {
+      const epsilon = (state.xMax - state.xMin) * 0.000005;
+      for (const [branch, start, end] of [
+        ['left', state.xMin, Math.min(state.xMax, 0.5 - epsilon)],
+        ['right', Math.max(state.xMin, 0.5 + epsilon), state.xMax]
+      ]) {
+        if (start >= end) continue;
+        const samples = clamp(Math.ceil((end - start) / (state.xMax - state.xMin) * L.plotWidth * 2), 32, 2200);
+        let path = '';
+        for (let index = 0; index <= samples; index += 1) {
+          const x = start + (end - start) * index / samples;
+          const y = f(x);
+          if (!Number.isFinite(y)) continue;
+          path += `${index === 0 ? 'M' : 'L'}${coordinate(xPixel(x))},${coordinate(yPixel(y))} `;
+        }
+        node('path', { d: path.trim(), 'data-branch': branch, fill: 'none', stroke: 'var(--curve, #176e80)', 'stroke-width': 2.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, functionLayer);
+      }
+      if (state.xMin < 0.5 && state.xMax > 0.5) {
+        node('line', { x1: xPixel(0.5), x2: xPixel(0.5), y1: L.top, y2: L.bottom, stroke: 'var(--plot-faint, #64748b)', 'stroke-width': 1, 'stroke-dasharray': '3 5', opacity: 0.6 }, functionLayer);
+      }
+    }
+    const value = f(state.x);
+    const defined = Number.isFinite(value);
+    const xVisible = state.x >= state.xMin && state.x <= state.xMax;
+    const yVisible = defined && value >= state.yMin && value <= state.yMax;
+    const markerX = xPixel(clamp(state.x, state.xMin, state.xMax));
+    xMarker.setAttribute('transform', `translate(${markerX} ${L.inputY})`);
+    xMarker.setAttribute('aria-valuemin', String(Math.min(state.xMin, state.x)));
+    xMarker.setAttribute('aria-valuemax', String(Math.max(state.xMax, state.x)));
+    xMarker.setAttribute('aria-valuenow', String(state.x));
+    xMarker.setAttribute('aria-valuetext', `x = ${format(state.x)}; f(x) ${defined ? `= ${format(value)}` : 'is undefined'}`);
+    xShape.setAttribute('d', xVisible ? circlePath(8) : state.x < state.xMin ? 'M -10 0 L 6 -8 L 6 8 Z' : 'M 10 0 L -6 -8 L -6 8 Z');
+    projections.replaceChildren();
+    curvePoint.style.display = xVisible && yVisible ? '' : 'none';
+    yMarker.style.display = defined ? '' : 'none';
+    if (defined) {
+      const markerY = yPixel(clamp(value, state.yMin, state.yMax));
+      yMarker.setAttribute('transform', `translate(${L.outputX} ${markerY})`);
+      yShape.setAttribute('d', yVisible ? circlePath(7) : value > state.yMax ? 'M 0 -10 L -8 6 L 8 6 Z' : 'M 0 10 L -8 -6 L 8 -6 Z');
+      if (xVisible) {
+        node('line', { x1: markerX, x2: markerX, y1: L.inputY - 10, y2: markerY }, projections);
+        if (yVisible) {
+          curvePoint.setAttribute('cx', markerX); curvePoint.setAttribute('cy', markerY);
+          node('line', { x1: markerX, x2: L.outputX - 9, y1: markerY, y2: markerY }, projections);
+        }
+      }
+    }
+    updateText('selected-x', format(state.x));
+    updateText('selected-y', defined ? format(value) : 'undefined');
+    updateText('selected-pair', defined ? `(${format(state.x)}, ${format(value)})` : `(${format(state.x)}, undefined)`);
+    let status;
+    if (!defined) status = 'At x = 0.5 the denominator is zero, so f(x) is undefined. No point or y-marker is shown.';
+    else if (!xVisible) status = 'The selected x is outside the visible range. Pan, zoom out, or reset the view to find it.';
+    else if (!yVisible) status = `The output lies ${value > state.yMax ? 'above' : 'below'} the visible graph. The arrow on the y-axis shows its direction; zoom out to see the point.`;
+    else status = state.domain === 'integers' ? 'Drag the bottom marker: x snaps to integers. Its matching output is marked on the right.' : 'Drag the bottom marker to move continuously along the real domain. The function has a gap at x = 0.5.';
+    updateText('point-status', status);
+    updateText('domain-note', state.domain === 'integers' ? 'Integer domain: the graph consists of separate points, one for each n ∈ ℤ.' : 'Real domain: the graph has two continuous branches, with x = 0.5 excluded.');
+    updateText('viewport-label', `x: ${format(state.xMin, 5)} to ${format(state.xMax, 5)} · y: ${format(state.yMin, 5)} to ${format(state.yMax, 5)}`);
+    if (controls.x) controls.x.step = state.domain === 'integers' ? '1' : 'any';
+    setInputValue(controls.x, state.x);
+    setInputValue(controls.r, state.r);
+    const minSpan = Math.min(state.xMax - state.xMin, state.yMax - state.yMin);
+    const maxSpan = Math.max(state.xMax - state.xMin, state.yMax - state.yMin);
+    if (controls.zoomIn) controls.zoomIn.disabled = minSpan <= 0.250001;
+    if (controls.zoomOut) controls.zoomOut.disabled = maxSpan >= 19999.99;
+  }
+  function selectX(value, recenter = false) {
+    if (!Number.isFinite(value)) return;
+    state.x = clean(snap(clamp(value, -1e9, 1e9)));
+    if (recenter && (state.x < state.xMin || state.x > state.xMax)) {
+      const span = state.xMax - state.xMin;
+      state.xMin = state.x - span / 2;
+      state.xMax = state.x + span / 2;
+    }
+    requestRender();
+  }
+  function pointFromEvent(event) {
+    const rectangle = svg.getBoundingClientRect();
+    return { x: (event.clientX - rectangle.left) * layout.width / rectangle.width, y: (event.clientY - rectangle.top) * layout.height / rectangle.height };
+  }
+  function xFromPixel(pixel) {
+    const value = state.xMin + clamp((pixel - layout.left) / layout.plotWidth, 0, 1) * (state.xMax - state.xMin);
+    return state.domain === 'integers' ? clamp(Math.round(value), Math.ceil(state.xMin), Math.floor(state.xMax)) : value;
+  }
+  function zoom(factor, anchorX = 0.5, anchorY = 0.5) {
+    const xSpan = state.xMax - state.xMin;
+    const ySpan = state.yMax - state.yMin;
+    const actual = clamp(factor, Math.max(0.25 / xSpan, 0.25 / ySpan), Math.min(20000 / xSpan, 20000 / ySpan));
+    const centerX = state.xMin + xSpan * anchorX;
+    const centerY = state.yMin + ySpan * anchorY;
+    state.xMin = centerX - xSpan * actual * anchorX;
+    state.xMax = centerX + xSpan * actual * (1 - anchorX);
+    state.yMin = centerY - ySpan * actual * anchorY;
+    state.yMax = centerY + ySpan * actual * (1 - anchorY);
+    requestRender();
+  }
+  svg.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || !layout) return;
+    const point = pointFromEvent(event);
+    const onMarker = xMarker.contains(event.target);
+    const onInputAxis = point.x >= layout.left - 15 && point.x <= layout.right + 15 && Math.abs(point.y - layout.inputY) <= 25;
+    const inPlot = point.x >= layout.left && point.x <= layout.right && point.y >= layout.top && point.y <= layout.bottom;
+    if (onMarker || onInputAxis) {
+      event.preventDefault();
+      drag = { kind: 'select', pointer: event.pointerId };
+      selectX(xFromPixel(point.x));
+      xMarker.focus({ preventScroll: true });
+    } else if (inPlot) {
+      event.preventDefault();
+      drag = { kind: 'pan', pointer: event.pointerId, start: point, view: { xMin: state.xMin, xMax: state.xMax, yMin: state.yMin, yMax: state.yMax } };
+      background.style.cursor = 'grabbing';
+    } else return;
+    svg.setPointerCapture(event.pointerId);
+  });
+  svg.addEventListener('pointermove', (event) => {
+    if (!drag || event.pointerId !== drag.pointer || !layout) return;
+    const point = pointFromEvent(event);
+    if (drag.kind === 'select') selectX(xFromPixel(point.x));
+    else {
+      const dx = (point.x - drag.start.x) / layout.plotWidth * (drag.view.xMax - drag.view.xMin);
+      const dy = (point.y - drag.start.y) / layout.plotHeight * (drag.view.yMax - drag.view.yMin);
+      state.xMin = drag.view.xMin - dx; state.xMax = drag.view.xMax - dx;
+      state.yMin = drag.view.yMin + dy; state.yMax = drag.view.yMax + dy;
+      requestRender();
+    }
+  });
+  function endDrag(event) {
+    if (!drag || event.pointerId !== drag.pointer) return;
+    drag = null;
+    background.style.cursor = 'grab';
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  }
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  svg.addEventListener('lostpointercapture', () => { drag = null; background.style.cursor = 'grab'; });
+  svg.addEventListener('wheel', (event) => {
+    if (!(event.ctrlKey || event.metaKey) || !layout) return;
+    const point = pointFromEvent(event);
+    if (point.x < layout.left || point.x > layout.right || point.y < layout.top || point.y > layout.bottom) return;
+    event.preventDefault();
+    zoom(Math.exp(clamp(event.deltaY, -100, 100) * 0.008), (point.x - layout.left) / layout.plotWidth, (layout.bottom - point.y) / layout.plotHeight);
+  }, { passive: false });
+  xMarker.addEventListener('focus', () => xFocus.setAttribute('opacity', 0.7));
+  xMarker.addEventListener('blur', () => xFocus.setAttribute('opacity', 0));
+  xMarker.addEventListener('keydown', (event) => {
+    const step = (state.domain === 'integers' ? 1 : (state.xMax - state.xMin) / 100) * (event.shiftKey ? 10 : 1);
+    let next;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = state.x + step;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = state.x - step;
+    else if (event.key === 'Home') next = state.domain === 'integers' ? Math.ceil(state.xMin) : state.xMin;
+    else if (event.key === 'End') next = state.domain === 'integers' ? Math.floor(state.xMax) : state.xMax;
+    else return;
+    event.preventDefault();
+    selectX(next, true);
+  });
+  document.querySelectorAll('input[name="domain"]').forEach((input) => input.addEventListener('change', () => {
+    if (!input.checked || !['integers', 'reals'].includes(input.value)) return;
+    state.domain = input.value;
+    state.x = snap(state.x);
+    if (controls.x) controls.x.value = format(state.x, 12);
+    requestRender();
+  }));
+  controls.x?.addEventListener('input', () => {
+    if (controls.x.value.trim() === '') return;
+    selectX(Number(controls.x.value), true);
+  });
+  controls.x?.addEventListener('change', () => {
+    controls.x.value = format(state.x, 12);
+    requestRender();
+  });
+  controls.r?.addEventListener('input', () => {
+    const value = Number(controls.r.value);
+    if (controls.r.value.trim() !== '' && Number.isFinite(value)) { state.r = clamp(value, -1e9, 1e9); requestRender(); }
+  });
+  controls.comparisons?.addEventListener('change', () => { state.showComparisons = controls.comparisons.checked; requestRender(); });
+  controls.bound?.addEventListener('change', () => { state.showBound = controls.bound.checked; requestRender(); });
+  controls.zoomIn?.addEventListener('click', () => zoom(0.75));
+  controls.zoomOut?.addEventListener('click', () => zoom(1 / 0.75));
+  controls.reset?.addEventListener('click', () => { Object.assign(state, initialView); requestRender(); });
+  controls.negative?.addEventListener('click', () => {
+    Object.assign(state, { xMin: -50, xMax: 2, yMin: -27, yMax: 2, x: -36 });
+    if (controls.x) controls.x.value = '-36';
+    requestRender();
+  });
+  controls.positive?.addEventListener('click', () => {
+    Object.assign(state, { xMin: -2, xMax: 50, yMin: -2, yMax: 28, x: 36 });
+    if (controls.x) controls.x.value = '36';
+    requestRender();
+  });
+  if ('ResizeObserver' in window) new ResizeObserver(requestRender).observe(stage);
+  else window.addEventListener('resize', requestRender);
+  state.x = snap(state.x);
+  render();
+})();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RSA Cryptography — Interactive Outreach Workshop | Farhad Babaee</title>
+  <meta name="description" content="Interactive notes and exercises on RSA cryptography. Learn about public-key encryption, modular arithmetic, Euler's theorem, and try hands-on encryption and decryption tasks.">
+  <meta name="keywords" content="RSA cryptography, public-key encryption, modular arithmetic, Euler's theorem, Fermat little theorem, encryption decryption, outreach workshop, school mathematics, University of Bristol, Farhad Babaee">
+  <meta name="author" content="Farhad Babaee">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://people.maths.bris.ac.uk/~ki18754/RSA-outreach/RSA-outreach.html">
+  <meta property="og:title" content="RSA Cryptography — Interactive Outreach Workshop">
+  <meta property="og:description" content="Hands-on RSA cryptography for outreach: public-key encryption, modular arithmetic, Euler's theorem, and live encryption / decryption exercises.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://people.maths.bris.ac.uk/~ki18754/RSA-outreach/RSA-outreach.html">
+  <meta property="og:site_name" content="Farhad Babaee — University of Bristol">
+  <meta property="og:locale" content="en_GB">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="RSA Cryptography — Interactive Outreach Workshop">
+  <meta name="twitter:description" content="Interactive RSA cryptography workshop: public-key encryption, modular arithmetic, Euler's theorem.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LearningResource",
+    "name": "RSA Cryptography — Interactive Outreach Workshop",
+    "url": "https://people.maths.bris.ac.uk/~ki18754/RSA-outreach/RSA-outreach.html",
+    "description": "Interactive notes and exercises on RSA cryptography: public-key encryption, modular arithmetic, Euler's theorem, with hands-on encryption and decryption tasks.",
+    "inLanguage": "en-GB",
+    "educationalLevel": "Secondary / Sixth-form",
+    "learningResourceType": "Interactive Workshop",
+    "teaches": ["RSA Cryptography", "Public-Key Encryption", "Modular Arithmetic", "Euler's Theorem", "Number Theory"],
+    "audience": { "@type": "EducationalAudience", "educationalRole": "student" },
+    "isPartOf": { "@type": "WebSite", "name": "Farhad Babaee — University of Bristol", "url": "https://people.maths.bris.ac.uk/~ki18754/" },
+    "author": { "@type": "Person", "name": "Farhad Babaee", "url": "https://people.maths.bris.ac.uk/~ki18754/index.html" }
+  }
+  </script>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="../bootstrap.css">
+  <link rel="stylesheet" href="../Main.css">
+  <!-- Typography + simple styling -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- MathJax for LaTeX math -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$','$'], ['\\(','\\)']],
+        displayMath: [['$$','$$'], ['\\[','\\]']]
+      },
+      options: { renderActions: { addMenu: [] } }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <style>
+    .typewriter {
+      display: inline-block;
+      font-weight: 700;
+      color: #0f172a;
+      border-right: 2px solid currentColor;
+      white-space: nowrap;
+      overflow: hidden;
+      max-width: 0;
+      animation: tw 4.2s steps(90, end) forwards, caret .8s step-end infinite;
+    }
+  
+    /* Start after a short pause */
+    .typewriter.delay {
+      animation-delay: 0.5s, 0.5s;
+    }
+  
+    @keyframes tw {
+      from { max-width: 0; }
+      to   { max-width: 100ch; }
+    }
+  
+    @keyframes caret {
+      50% { border-color: transparent; }
+    }
+  
+    @media (prefers-reduced-motion: reduce) {
+      .typewriter {
+        max-width: none;
+        border-right: none;
+        animation: none;
+      }
+    }
+
+    /* Matrix-style falling glyphs effect */
+    .matrix-container {
+      display: inline-block;
+      background: #000;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .matrix-text {
+      color: #00ff41;
+      font-size: 16px;
+      line-height: 1.4;
+      text-shadow: 0 0 3px #00ff41;
+      letter-spacing: 1px;
+      white-space: pre-wrap;
+      min-height: 1.4em;
+    }
+    
+    .matrix-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: #00ff41;
+      margin-left: 2px;
+      animation: matrix-blink 1s step-end infinite;
+      vertical-align: baseline;
+      box-shadow: 0 0 3px #00ff41;
+    }
+    
+    @keyframes matrix-blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    
+    .matrix-glyph {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(-20px);
+      animation: matrix-fall 0.1s ease-out forwards;
+    }
+    
+    @keyframes matrix-fall {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .matrix-glyph {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .matrix-cursor {
+        animation: none;
+      }
+    }
+
+
+    :root{
+      --ink:#0f172a;
+      --muted:#334155;
+      --paper:#ffffff;
+      --edge:#e2e8f0;
+      --accent:#166534;
+      --accent2:#0ea5e9;
+      --shadow: 0 20px 50px rgba(2,6,23,.08);
+    }
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--ink);
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    header{
+      position: sticky;
+      top:0;
+      z-index:10;
+      backdrop-filter: blur(10px);
+      background: rgba(248,250,252,.8);
+      border-bottom: 1px solid rgba(226,232,240,.9);
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 16px;
+    }
+    .titlebar{
+      display:flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    h1{
+      margin:0;
+      font-size: 32px;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .hero{
+      padding: 18px 18px;
+      border: 1px solid var(--edge);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(14,165,233,.10) 0%, rgba(22,101,52,.06) 100%);
+      margin-bottom: 18px;
+    }
+    .byline{
+      margin-top: 6px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .byline .sep{ opacity: .7; padding: 0 6px; }
+    .subtitle{
+      margin-top: 8px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    main .wrap{
+      background: var(--paper);
+      margin-top: 18px;
+      margin-bottom: 28px;
+      border: 1px solid var(--edge);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 28px 22px;
+    }
+
+    h2{
+      margin: 26px 0 10px 0;
+      font-size: 20px;
+      letter-spacing: -0.01em;
+      border-top: 1px solid rgba(226,232,240,.9);
+      padding-top: 18px;
+    }
+    h3{
+      margin: 18px 0 8px 0;
+      font-size: 16px;
+    }
+    p, li{
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .note{
+      border-left: 4px solid rgba(22,101,52,.35);
+      background: rgba(22,101,52,.06);
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin: 12px 0;
+    }
+    .example{
+      border-left: 4px solid rgba(14,165,233,.35);
+      background: rgba(14,165,233,.06);
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin: 12px 0;
+    }
+    a{ color: #0b66c3; text-decoration: underline; text-underline-offset: 2px; }
+    .nav-pills a{ text-decoration: none; }
+
+    /* Tables */
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 8px 0;
+      font-size: 14px;
+    }
+    th, td{
+      border: 1px solid rgba(226,232,240,.9);
+      padding: 10px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th{
+      background: rgba(248,250,252,.9);
+      font-weight: 800;
+    }
+    .center{ text-align:center; }
+    .small{ font-size: 13px; color: var(--muted); }
+    hr{
+      border: none;
+      border-top: 1px solid rgba(226,232,240,.9);
+      margin: 26px 0;
+    }
+
+    /* Images */
+    figure{ margin: 14px 0; }
+    figure img{
+      max-width: 100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(226,232,240,.9);
+      background: rgba(248,250,252,.7);
+    }
+    figcaption{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+ .iframe-box{
+      margin: 16px 0 24px 0;
+      border: 1px solid var(--edge);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(2,6,23,.08);
+    }
+    #task5-frame, #task7-frame{ scroll-margin-top: 110px; }
+    .iframe-box iframe{
+      width:100%;
+      height:680px;
+      border:none;
+      display:block;
+      background:white;
+    }
+    .iframe-caption{
+      padding: 8px 12px;
+      font-size:13px;
+      color:var(--muted);
+      background:#f8fafc;
+      border-top:1px solid var(--edge);
+    }
+
+    @media print{
+      header{ position:static; }
+      .paper{ box-shadow:none; border:none; }
+      .iframe-box iframe{ height:300px; }
+    }
+    /* Print */
+    @media print{
+      header{ position: static; backdrop-filter:none; background:#fff; }
+      body{ background:#fff; }
+      main .wrap{ box-shadow:none; border:none; margin:0; padding:0; }
+      a{ color:#000; text-decoration:none; }
+    }
+  </style>
+</head>
+
+<body id="top">
+  <header>
+    <div class="wrap titlebar">
+      <nav aria-label="Site navigation">
+        <div class="nav">
+          <div class="container">
+            <ul class="nav nav-pills">
+              <li><a href="../index.html">Home</a></li>
+              <!-- <li><a href="../News_Talks.html">News/Talks</a></li> -->
+              <li><a href="../Publications.html">Research</a></li>
+              <li><a href="../Teaching.html">Teaching</a></li>
+              <li><a href="../math_fun.html">Math Fun!</a></li>
+              <li class="active"><a href="RSA-outreach.html" aria-current="page">RSA Crypto</a></li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+     
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section class="hero">
+        <h1>RSA Cryptography</h1>
+        <div class="byline"><span class="name">Farhad Babaee</span><span class="sep">·</span><span class="affil">University of Bristol</span></div>
+        <div class="subtitle">Interactive notes from an outreach session on RSA cryptography (2025).</div>
+      </section>
+       
+     
+      <h2 id="introduction">Introduction</h2>
+
+      <p>
+        Coding and decoding are constantly happening in our daily lives. Not only when you use your phone, but even now — as I am typing these words and you are reading them later — some of the most complex encoding and decoding imaginable is taking place.
+        The thoughts in my head, arising from electrical activity and chemical processes in my brain cause my brain to send precise signals to my muscles, transforming intention into motion, and motion into words typed on a keyboard which is already several steps of encoding and decoding. As you read this text, your eyes decode patterns of light into letters, recognise words in the English language, and even detect and ignore irregularities such as typos (error-correction).
+     
+        Finally, these symbols transform into electrical signals and chemical processes in your brain, and my message is conveyed.
+      </p>
+      <p>  
+      <span class="matrix-container" id="matrixText"></span>
+      </p>
+      The purpose of these notes is to acquaint you with one particular method of coding and decoding used to secure our data: the RSA cryptosystem. As described on Wikipedia, the RSA cryptosystem is a
+      <a href="https://en.wikipedia.org/wiki/Public-key_cryptography" target="_blank" rel="noopener noreferrer">
+      public-key cryptosystem
+      </a>, and one of the oldest and most widely used methods for secure data transmission. The initialism “RSA” comes from the surnames of Ron Rivest, Adi Shamir, and Leonard Adleman, who publicly described the algorithm in 1977. An equivalent system was developed secretly in 1973 at the Government Communications Headquarters (GCHQ), the British signals intelligence agency, by the English mathematician Clifford Cocks, and was declassified in 1997.
+            \[
+              7 \equiv 1 \pmod 3.
+            \]
+      
+
+      <p>In general, two numbers $a$ and $b$ are said to be <em>congruent modulo $n$</em> if they have the <em>same remainder</em> when divided by $n$. We write this as:</p>
+      \[
+        a \equiv b \pmod{n}.
+      \]
+      <p>This simply means that:</p>
+      \[
+        a \text{ and } b \text{ leave the same remainder upon division by } n,
+      \]
+      <p>or equivalently,</p>
+      \[
+        n \mid (a - b).
+      \]
+
+      <div class="example">
+        <p><b>Example.</b></p>
+        <ul>
+
+          <li>$7 \equiv 1 \pmod{3}$ (both leave remainder $1$ when divided by $3$.)</li>
+          <li>$14 \equiv 2 \pmod{12}$ (because $14 = 12 + 2$.) Can you show me this on the clock?</li>
+          <li>$-2 \equiv 10 \pmod{12}.$ Can you show me this on a clock?</li>
+          <li>$3 \equiv 8 \pmod{5}.$ Can you show me this on a clock which has only 5 hours?</li>
+
+        </ul>
+      </div>
+     
+      <h3>Modular Clocks</h3>
+<p>Can you reach a streak of 5 for the following game?</p>
+<div class="iframe-box">
+  <iframe src="modular-clocks.html" title="Modular Clocks"></iframe>
+  <div class="iframe-caption">Interactive: Modular arithmetic on a clock</div>
+</div>
+
+
+
+
+
+
+      <h2 id="tricks">Modular Arithmetic Tricks with Congruences</h2>
+      <p>Congruences behave very nicely with addition, subtraction, multiplication, and powers. If</p>
+      \[
+        a \equiv b \pmod{n}
+        \qquad\text{and}\qquad
+        c \equiv d \pmod{n},
+      \]
+      <p>then the following rules always hold:</p>
+      \[
+        a + c \equiv b + d \pmod{n},
+      \]
+      \[
+        ac \equiv bd \pmod{n},
+      \]
+      \[
+        a^m \equiv b^m \pmod{n} \qquad \text{for any integer } m \ge 1.
+      \]
+      <p>These rules let us replace numbers with simpler congruent ones to make computations easier.</p>
+
+      <h3>Examples</h3>
+      <ul>
+        <li><b>Addition example:</b> $17 \equiv 2 \pmod{5}$ and $23 \equiv 3 \pmod{5}$. Therefore,
+          \[
+            17 + 23 \equiv 2 + 3 \equiv 5 \equiv 0 \pmod{5}.
+          \]
+        </li>
+        <li><b>Multiplication example:</b> $14 \equiv 2 \pmod{12}$ and $11 \equiv -1 \pmod{12}$. Then
+          \[
+            14 \cdot 11 \equiv 2 \cdot (-1) \equiv -2 \equiv 10 \pmod{12}.
+          \]
+        </li>
+        <li><b>Powers example:</b> $7 \equiv -1 \pmod{8}$. Then
+          \[
+            7^2 \equiv (-1)^2 = 1 \pmod{8},\qquad
+            7^5 \equiv (-1)^5 = -1 \equiv 7 \pmod{8}.
+          \]
+        </li>
+        <li><b>Another addition example:</b> $52 \equiv 4 \pmod{6}$ and $19 \equiv 1 \pmod{6}$. Thus
+          \[
+            52 + 19 \equiv 4 + 1 = 5 \pmod{6}.
+          \]
+        </li>
+        <li><b>Another multiplication example:</b> $35 \equiv 3 \pmod{4}$ and $22 \equiv 2 \pmod{4}$. So
+          \[
+            35 \cdot 22 \equiv 3 \cdot 2 = 6 \equiv 2 \pmod{4}.
+          \]
+        </li>
+        <li><b>Another powers example:</b> Since $9 \equiv -1 \pmod{10}$,
+          \[
+            9^3 \equiv (-1)^3 = -1 \equiv 9 \pmod{10}.
+          \]
+        </li>
+      </ul>
+
+      <p>These “magic tricks” let us simplify huge numbers by replacing them with small, congruent ones. But are these really magic or simple maths ideas? How do we prove that they actually hold and are valid?</p>
+
+      <h2 id="how">How is RSA done?</h2>
+      <p>In RSA, we start with two large primes $p$ and $q$, and compute $n = p \times q$. We also compute Euler’s function $\varphi(n) = (p - 1)(q - 1)$. We choose an encryption exponent $e$ such that $\gcd(e, \varphi(n)) = 1$, and compute the decryption exponent $d$ as the modular inverse of $e$ modulo $\varphi(n)$, so that:</p>
+      \[
+          e \times d \equiv 1 \ (mod~\varphi(n)).
+      \]
+      <p>
+        I'll skip the details of this computation, but this task is not difficult and it can be done using
+        <a href="https://en.wikipedia.org/wiki/B%C3%A9zout%27s_identity." target="_blank" rel="noopener noreferrer">
+          Bézout's identity
+        </a>
+      </p>      <p><b>Assume Alice wants to send a message to Bob:</b></p>
+      <ol>
+        <li>Bob generates an RSA key pair: public key $(n, e)$ and private key $d$.</li>
+        <li>Bob shares his public key $(n, e)$ openly. His private key $d$ is kept secret.</li>
+        <li>Alice converts her message to $m$ (a numerical form).</li>
+        <li>Alice encrypts $m$ using Bob’s public key: $c \equiv m^e \ (mod~n)$ (Encryption -- see <a href="#task5-frame">Task 5 below</a>).</li>
+        <li>Alice sends the ciphertext $c$ to Bob over an open channel.</li>
+        <li>Bob receives $c$ and decrypts it using his private key: $m \equiv c^d \ (mod~n)$ (Decryption -- see <a href="#task7-frame">Task 7 below</a>).</li>
+        <li>Bob recovers and reads the original message $m$.</li>
+      </ol>
+      <p>This process ensures confidentiality: only Bob can decrypt the message because only he knows $d$.</p>
+
+      <div style="width:100%; max-width:960px; margin:2em auto; border-radius:16px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+        <iframe src="rsa-animation.html" style="border:none; width:100%; height:620px; display:block;" title="RSA Message Flow Animation"></iframe>
+      </div>
+
+      <h2 id="euler">Euler's Theorem</h2>
+      <p>
+  Behind this cryptographic method lies a mathematical idea that has been around for centuries, discovered by
+  Leonhard Euler (1707–1783). To understand why RSA works, we first need to discuss
+  <em>Euler’s totient function</em>.
+</p>
+
+<p>
+  We mentioned earlier that $\varphi(pq) = (p-1)(q-1)$ when $p$ and $q$ are distinct primes, but we have not yet
+  properly defined what $\varphi(n)$ actually is.
+</p>
+
+<p>
+  The function $\varphi(n)$ is defined as the number of positive integers less than $n$ that are
+  <em>coprime</em> to $n$ (that is, integers whose greatest common divisor with $n$ is $1$).
+</p>
+
+<p>
+  For example, to compute $\varphi(9)$, we list the numbers
+  \[
+    \{1,2,3,4,5,6,7,8\}
+  \]
+  and cross off those that are not coprime to $9$. Since $3$ and $6$ share a common factor with $9$, they are excluded.
+  The remaining numbers are $\{1,2,4,5,7,8\}$, so
+  \[
+    \varphi(9) = 6.
+  \]
+</p>
+
+<p>
+  Similarly, since $7$ is prime, every number less than $7$ is coprime to it. Therefore,
+  \[
+    \varphi(7) = 6.
+  \]
+</p>
+
+<p>
+  In general, Euler’s totient function satisfies two important properties:
+</p>
+
+<ul>
+  <li>
+    If $\gcd(a,b)=1$, then
+    \[
+      \varphi(ab) = \varphi(a)\varphi(b).
+    \]
+  </li>
+  <li>
+    If $p$ is a prime number and $k \ge 1$, then
+    \[
+      \varphi(p^k) = p^k - p^{k-1}.
+    \]
+  </li>
+</ul>
+
+<p>
+  Using these properties, we can easily compute $\varphi(n)$ when $n$ is a product of prime powers. In particular,
+  if $n = pq$ with $p$ and $q$ distinct primes, then
+  \[
+    \varphi(n) = (p-1)(q-1),
+  \]
+  which is exactly the formula used in RSA.
+</p>
+
+<p>
+  Euler’s Totient Theorem states that for any integer $a$ coprime to $n$:
+</p>
+
+\[
+  a^{\varphi(n)} \equiv 1 \pmod{n}.
+\]
+
+<p>
+  In RSA, Euler’s theorem ensures that encryption and decryption correctly reverse each other when the message
+  is coprime to $n$.
+</p>
+
+<h2 id="why">Why does RSA work?</h2>
+
+<p>
+  To rely on a cryptographic method and to be sure that it always works, we need a bulletproof fact — something
+  that can be shown to hold in all cases. Euler’s Theorem provides exactly that guarantee.
+</p>
+      <div class="note">
+        <p>
+          <b>Theorem.</b>
+          Let $n = p \times q$, where $p$ and $q$ are distinct prime numbers, and let
+          $\varphi(n) = (p-1)(q-1)$. Assume that $m$ is an integer such that
+          $\gcd(m, n) = 1$. Let $e$ and $d$ be integers satisfying
+          $e \times d \equiv 1 \pmod{\varphi(n)}$. Then:
+        </p>
+        \[
+          (m^e)^d \equiv m \pmod{n}.
+        \]
+      </div>
+      
+      <p>
+        Why is the statement above bulletproof? Because it follows from a precise
+        mathematical argument.
+      </p>
+      
+      <div class="note">
+        <p><b>Proof.</b> Since $e \times d \equiv 1 \pmod{\varphi(n)}$, we can write</p>
+        \[
+            e \times d = 1 + k\varphi(n), \quad \text{for some integer } k.
+        \]
+        <p>We then have</p>
+     
+        \[
+            m^{ed} = m^{1 + k\varphi(n)} = m \times m^{k\varphi(n)}.
+        \]
+        <p>By Euler’s Totient Theorem, since $\gcd(m, n) = 1,$ we deduce that</p>
+        \[
+            m^{\varphi(n)} \equiv 1 \ (mod~n).
+        \]
+        <p>As a result,</p>
+        \[
+            m^{1 + k\varphi(n)} \equiv m \times 1^k \equiv m \ (mod~n).
+        \]
+        <p>Thus, after decryption, we recover the original message $m$.</p>
+      </div>
+
+      <h2 id="factoring">Factoring $n$ is hard</h2>
+      <p>The security of RSA relies on the difficulty of factoring large integers $n = pq$, where $p$ and $q$ are large primes. The best classical algorithm known for factoring, the General Number Field Sieve (GNFS), has a sub-exponential running time. Below is a summary of the approximate feasibility of factoring different RSA key sizes; see [3].</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Key Size (bits)</th>
+            <th>Approx. Digits</th>
+            <th>Status</th>
+            <th>Feasibility</th>
+            <th>Approximate Effort</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>512</td><td>155</td><td>Broken</td><td>Easy</td><td>Already factored; weeks</td></tr>
+          <tr><td>1024</td><td>308</td><td>Weak</td><td>Hard, possible in future</td><td>100,000 core-years</td></tr>
+          <tr><td>2048</td><td>617</td><td>Recommended</td><td>Infeasible</td><td>Billions of years estimated</td></tr>
+          <tr><td>3072</td><td>925</td><td>Strong</td><td>Infeasible</td><td>Beyond realistic capacity</td></tr>
+          <tr><td>4096</td><td>1234</td><td>Very strong</td><td>Infeasible</td><td>Beyond realistic capacity</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="fermat">Fermat's theorem and Fermat primality test</h2>
+      <p>Mathematicals can come up with all sort of ideas to solve a problem. For example Fermat's little Theorem and probability tools to decompose a number into primes factors. Recall that Fermat's Little Theorem states that if $p$ is prime and $a$ is an integer not divisible by $p$, then:</p>
+      \[
+        a^{p-1} \equiv 1 \ (mod~p).
+      \]
+      <p>Fermat primality test uses this to check if a number $n$ is prime:</p>
+      <ol>
+        <li>Pick a random integer $a$ such that $1 &lt; a &lt; n - 1$.</li>
+        <li>Compute $a^{n-1} \mod~n$.</li>
+        <li>If result $\neq 1$, $n$ is composite.</li>
+        <li>If result $= 1$, $n$ is <em>probably</em> prime! (but might still be a Carmichael number).</li>
+      </ol>
+      <p>This is a probabilistic test and may give false positives.</p>
+
+      <h2 id="shor">Order of $g$ and Shor's algorithm (Quantum Attack!)</h2>
+      <p>I know a little about this, but as I explained during the session, for any integer $g$ coprime to $n$, there exists a smallest positive integer $p$ (called the order of $g$ modulo $n$) such that:</p>
+      \[
+        g^p \equiv 1 \ (mod~n).
+      \]
+      <p>The idea is that starting from a guess which is a factor of $n$, $(g^{p/2} - 1)$ or $(g^{p/2} + 1)$ is a much better guess for being a factor of $n$. If we find one factor for $n$, since $n = pq$, then we are done! Finding this order is a hard problem classically and is related to factoring. Shor's algorithm, developed by Peter Shor, is a quantum algorithm that can efficiently find the order of $g$ modulo $n$. By finding this order, one can factor $n$ and break RSA security. Thus, quantum computers with enough qubits can break RSA by using Shor's algorithm, which is why post-quantum cryptography is being developed. 
+        So we don't know for how long RSA will be safe and it's on the new generation of mathematicians to come up with new methods for cryptography!</p>
+        
+     
+
+
+      <hr />
+
+      <h2 id="tasks">RSA Workshop Tasks</h2>
+
+      <h3>Task 1: Prime Identification</h3>
+      <p>Identify whether each of the following numbers is prime:</p>
+      \[
+        11,\ 14,\ 17,\ 21,\ 23,\ 25,\ 29,\ 33,\ 37,\ 39.
+      \]
+
+      <h3>Task 2: Coprime Pairs</h3>
+      <p>Determine if the following pairs are coprime (i.e. $\gcd(a,b) = 1$):</p>
+      \[
+      \begin{aligned}
+      &(8, 15),\quad (14, 21),\quad (9, 16),\quad (10, 17),\\
+      &(18, 27),\quad (11, 20),\quad (12, 25),\quad (13, 22).
+      \end{aligned}
+      \]
+
+      <h3>Task 3: Compute $n$ and $\varphi(n)$</h3>
+      <p>For each pair of primes $p$ and $q$, compute</p>
+      \[
+        n = pq,\qquad \varphi(n) = (p-1)(q-1).
+      \]
+
+      <table>
+        <thead>
+          <tr><th>$p$</th><th>$q$</th><th>$n = pq$</th><th>$\varphi(n)$</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>3</td><td>11</td><td></td><td></td></tr>
+          <tr><td>5</td><td>13</td><td></td><td></td></tr>
+          <tr><td>7</td><td>17</td><td></td><td></td></tr>
+          <tr><td>11</td><td>19</td><td></td><td></td></tr>
+          <tr><td>13</td><td>23</td><td></td><td></td></tr>
+          <tr><td>17</td><td>29</td><td></td><td></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Task 4: Choose $e$</h3>
+      <p>For each case, choose an encryption exponent $e$ such that</p>
+      \[
+        1 < e < \varphi(n), \qquad \gcd(e,\varphi(n)) = 1.
+      \]
+
+      <table>
+        <thead>
+          <tr><th>$p$</th><th>$q$</th><th>$n$</th><th>$\varphi(n)$</th><th>$e$</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>3</td><td>11</td><td>33</td><td>20</td><td></td></tr>
+          <tr><td>5</td><td>13</td><td>65</td><td>48</td><td></td></tr>
+          <tr><td>7</td><td>17</td><td>119</td><td>96</td><td></td></tr>
+          <tr><td>11</td><td>19</td><td>209</td><td>180</td><td></td></tr>
+          <tr><td>13</td><td>23</td><td>299</td><td>264</td><td></td></tr>
+          <tr><td>17</td><td>29</td><td>493</td><td>448</td><td></td></tr>
+        </tbody>
+      </table>
+
+
+
+      <h3>Task 5: Encryption</h3>
+     
+<p>Compute the ciphertext $c \equiv m^e \pmod n$ for each case.</p>
+<div class="iframe-box" id="task5-frame">
+  <iframe src="Task5-encryption.html" title="RSA Encryption"></iframe>
+  <div class="iframe-caption">Interactive: RSA encryption</div>
+</div>
+
+      <h3>Task 6: Verify the Key Equation</h3>
+      <p>For each line below, you are given $p$, $q$, $n$, $\varphi(n)$, the encryption exponent $e$, and an explicit decryption exponent $d$.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>$p$</th><th>$q$</th><th>$\varphi(n)$</th><th>$e$</th><th>$d$</th><th>$ed \equiv ?$ (mod $\varphi(n)$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>3</td><td>11</td><td>20</td><td>3</td><td>7</td><td></td></tr>
+          <tr><td>5</td><td>13</td><td>48</td><td>5</td><td>29</td><td></td></tr>
+          <tr><td>7</td><td>17</td><td>96</td><td>5</td><td>77</td><td></td></tr>
+          <tr><td>11</td><td>19</td><td>180</td><td>7</td><td>103</td><td></td></tr>
+          <tr><td>13</td><td>23</td><td>264</td><td>5</td><td>53</td><td></td></tr>
+          <tr><td>17</td><td>29</td><td>448</td><td>3</td><td>299</td><td></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Task 7: Decryption</h3>
+      <p>Below are the ciphertexts $c$ you obtained in Task 5 and the corresponding decryption exponents $d$ from Task 6.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Case</th><th>$n$</th><th>$c \equiv m^e \ (mod~n)$</th><th>$d$</th><th>$c^d \ (mod~n)$</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>(a)</td><td>33</td><td>8</td><td>7</td><td></td></tr>
+          <tr><td>(b)</td><td>65</td><td>48</td><td>29</td><td></td></tr>
+          <tr><td>(c)</td><td>119</td><td>4</td><td>77</td><td></td></tr>
+          <tr><td>(d)</td><td>209</td><td>136</td><td>103</td><td></td></tr>
+          <tr><td>(e)</td><td>299</td><td>156</td><td>53</td><td></td></tr>
+          <tr><td>(f)</td><td>493</td><td>343</td><td>299</td><td></td></tr>
+        </tbody>
+      </table>
+
+      <p>Compute the decrypted message for each line by evaluating</p>
+      \[
+        m \equiv c^d \ (mod~n),
+      \]
+      <p>and confirm that you recover the original message $m$.</p>
+
+  
+<div class="iframe-box" id="task7-frame">
+  <iframe src="Task7-decryption.html" title="RSA Decryption"></iframe>
+  <div class="iframe-caption">Interactive: RSA decryption</div>
+</div>
+
+      <h3>Task 8: Hacking. Factor $n$ and Find $\varphi(n)$</h3>
+      <p>For each $n$ below:</p>
+      <ol type="i">
+        <li>Factor $n$ as $n = pq$ with $p$ and $q$ prime.</li>
+        <li>Compute $\varphi(n)$.</li>
+      </ol>
+      \[
+        1241,\quad 4579,\quad 84611,\quad 273307,\quad 716141.
+      \]
+
+
+        <h2 id="references">References</h2>
+        <ol>
+          <li>Lenstra, A. K., &amp; Verheul, E. R. (2001). Selecting Cryptographic Key Sizes. <i>Journal of Cryptology</i>. Available at: <a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf" target="_blank" rel="noopener noreferrer">https://www.iacr.org/archive/asiacrypt2001/22480516.pdf</a></li>
+          <li>Shor, P. W. (1997). Polynomial-time algorithms for prime factorization and discrete logarithms on a quantum computer. <i>SIAM Journal on Computing</i>, 26(5), 1484–1509.</li>
+          <li>RSA Factoring Challenge Results. See: <a href="https://en.wikipedia.org/wiki/RSA_Factoring_Challenge" target="_blank" rel="noopener noreferrer">https://en.wikipedia.org/wiki/RSA_Factoring_Challenge</a></li>
+        </ol>
+      </div>
+
+   
+  
+
+  </main>
+
+  <script>
+    // Prevent scroll restoration on page load/refresh, so the page opens at the top.
+    // Nothing else may move the page: a reader can start scrolling before the embedded
+    // tasks have loaded, and any later jump back to the top would undo it.
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+
+    // Matrix falling glyphs effect
+    (function() {
+      // Easy to change text via variable
+      const MATRIX_TEXT = "Wondrous, isn't it?";
+      
+      // Matrix glyphs (mix of characters that look like falling code)
+      const MATRIX_GLYPHS = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      
+      const container = document.getElementById('matrixText');
+      if (!container) return;
+      
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      
+      if (prefersReducedMotion) {
+        // Just show the text directly if reduced motion is preferred
+        container.innerHTML = '<span class="matrix-text">' + MATRIX_TEXT + '</span><span class="matrix-cursor"></span>';
+        return;
+      }
+      
+      const text = MATRIX_TEXT;
+      const chars = text.split('');
+      const delayPerChar = 60; // milliseconds between each character
+      
+      // Create a wrapper for the text
+      const textWrapper = document.createElement('span');
+      textWrapper.className = 'matrix-text';
+      container.appendChild(textWrapper);
+      
+      chars.forEach((char, index) => {
+        // Create a character container for each position
+        const charContainer = document.createElement('span');
+        charContainer.style.display = 'inline-block';
+        charContainer.style.position = 'relative';
+        charContainer.style.verticalAlign = 'baseline';
+        // Don't set minWidth - let each character determine its own width
+        textWrapper.appendChild(charContainer);
+        
+        setTimeout(() => {
+          // Show random glyphs falling first
+          const numRandomGlyphs = Math.floor(Math.random() * 2) + 2; // 2-3 random glyphs
+          
+          for (let i = 0; i < numRandomGlyphs; i++) {
+            setTimeout(() => {
+              const randomSpan = document.createElement('span');
+              randomSpan.style.position = 'absolute';
+              randomSpan.style.left = '0';
+              randomSpan.style.top = '0';
+              randomSpan.style.whiteSpace = 'nowrap';
+              randomSpan.style.opacity = '0.4';
+              randomSpan.style.color = '#00ff41';
+              randomSpan.style.textShadow = '0 0 2px #00ff41';
+              randomSpan.textContent = MATRIX_GLYPHS[Math.floor(Math.random() * MATRIX_GLYPHS.length)];
+              randomSpan.style.transform = 'translateY(-15px)';
+              randomSpan.style.transition = 'opacity 0.1s, transform 0.1s';
+              charContainer.appendChild(randomSpan);
+              
+              // Animate glyph falling
+              setTimeout(() => {
+                randomSpan.style.opacity = '0';
+                randomSpan.style.transform = 'translateY(5px)';
+              }, 50);
+              
+              // Remove glyph
+              setTimeout(() => {
+                if (randomSpan.parentNode) {
+                  randomSpan.remove();
+                }
+              }, 150);
+            }, i * 30);
+          }
+          
+          // Add the actual character after random glyphs
+          setTimeout(() => {
+            const span = document.createElement('span');
+            span.className = 'matrix-glyph';
+            span.style.display = 'inline-block';
+            span.style.whiteSpace = 'nowrap';
+            span.textContent = char === ' ' ? '\u00A0' : char;
+            charContainer.appendChild(span);
+            
+            // Add cursor after last character
+            if (index === chars.length - 1) {
+              setTimeout(() => {
+                const cursor = document.createElement('span');
+                cursor.className = 'matrix-cursor';
+                container.appendChild(cursor);
+              }, 100);
+            }
+          }, numRandomGlyphs * 30);
+        }, index * delayPerChar);
+      });
+    })();
+
+  </script>
+
+
+</body>
+</html>

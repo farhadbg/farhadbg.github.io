@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smooth or Singular?</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax for rendering equations -->
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+    
+    <style>
+        /* Custom scrollbar for equation area */
+        .math-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+        .math-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .math-scroll::-webkit-scrollbar-thumb {
+            background: rgba(236, 72, 153, 0.5);
+            border-radius: 2px;
+        }
+
+        /* Show the 600x600 plot as the largest square its area can hold, so none of it is
+           cut off whatever the size of the frame it is embedded in. */
+        .plot-area { container-type: size; }
+        .plot-box { width: min(100cqw, 100cqh); aspect-ratio: 1; }
+        .plot-box canvas { width: 100%; height: auto; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen overflow-hidden selection:bg-pink-500/30">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+        // --- ICONS ---
+        const Icon = ({ children, className = "", size = 24, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const RefreshCw = (props) => <Icon {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></Icon>;
+        const Info = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></Icon>;
+        const AlertTriangle = (props) => <Icon {...props}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></Icon>;
+        const Zap = (props) => <Icon {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>;
+
+        // --- CONSTANTS ---
+        const WIDTH = 600;
+        const HEIGHT = 600;
+        const RANGE = 4; // plotting from -4 to 4
+        
+        // --- MATH HELPERS ---
+        
+        const SINGULAR_PRESETS = [
+            {
+                name: "Cuspidal Cubic",
+                coeffs: { '0,2': 1, '3,0': -1 } // y^2 - x^3 = 0
+            },
+            {
+                name: "Nodal Cubic",
+                coeffs: { '0,2': 1, '3,0': -1, '2,0': -1 } // y^2 - x^3 - x^2 = 0
+            },
+            {
+                name: "Folium of Descartes",
+                coeffs: { '3,0': 1, '0,3': 1, '1,1': -3 } // x^3 + y^3 - 3xy = 0
+            },
+            {
+                name: "Tschirnhausen Cubic",
+                coeffs: { '0,2': 1, '3,0': -1, '2,0': 3 } // y^2 = x^3 - 3x^2
+            },
+            {
+                name: "Lemniscate-like (Deg 3 approx)",
+                coeffs: { '3,0': 1, '1,2': 1, '1,0': -1 } // x(x^2 + y^2) - x = 0 (Roughly)
+            }
+        ];
+
+        // Generate a random polynomial of degree up to 3
+        const generatePolynomial = (forceSingular = false) => {
+            // Default blank coeffs
+            const empty = {
+                '0,0': 0, '1,0': 0, '0,1': 0,
+                '2,0': 0, '1,1': 0, '0,2': 0,
+                '3,0': 0, '2,1': 0, '1,2': 0, '0,3': 0
+            };
+
+            // 30% chance of singular curve if not forced, unless explicit random requested
+            if (forceSingular || Math.random() < 0.3) {
+                const preset = SINGULAR_PRESETS[Math.floor(Math.random() * SINGULAR_PRESETS.length)];
+                return { ...empty, ...preset.coeffs };
+            }
+
+            // terms: 1, x, y, x2, xy, y2, x3, x2y, xy2, y3
+            const r = () => (Math.random() * 2 - 1).toFixed(2);
+            
+            const coeffs = {
+                '0,0': parseFloat(r()),
+                '1,0': parseFloat(r()),
+                '0,1': parseFloat(r()),
+                '2,0': parseFloat(r()),
+                '1,1': parseFloat(r()),
+                '0,2': parseFloat(r()),
+                '3,0': parseFloat(r()),
+                '2,1': parseFloat(r()),
+                '1,2': parseFloat(r()),
+                '0,3': parseFloat(r())
+            };
+            
+            // Ensure high degree terms exist for visual interest
+            if (Math.abs(coeffs['3,0']) < 0.2 && Math.abs(coeffs['0,3']) < 0.2) {
+                coeffs['3,0'] = 1.0;
+            }
+
+            return coeffs;
+        };
+
+        const evaluate = (coeffs, x, y) => {
+            let sum = 0;
+            sum += coeffs['0,0'];
+            sum += coeffs['1,0'] * x;
+            sum += coeffs['0,1'] * y;
+            sum += coeffs['2,0'] * x * x;
+            sum += coeffs['1,1'] * x * y;
+            sum += coeffs['0,2'] * y * y;
+            sum += coeffs['3,0'] * x * x * x;
+            sum += coeffs['2,1'] * x * x * y;
+            sum += coeffs['1,2'] * x * y * y;
+            sum += coeffs['0,3'] * y * y * y;
+            return sum;
+        };
+
+        const getGradient = (coeffs, x, y) => {
+            // Partial wrt x
+            let dx = 0;
+            dx += coeffs['1,0'];
+            dx += 2 * coeffs['2,0'] * x;
+            dx += coeffs['1,1'] * y;
+            dx += 3 * coeffs['3,0'] * x * x;
+            dx += 2 * coeffs['2,1'] * x * y;
+            dx += coeffs['1,2'] * y * y;
+
+            // Partial wrt y
+            let dy = 0;
+            dy += coeffs['0,1'];
+            dy += coeffs['1,1'] * x;
+            dy += 2 * coeffs['0,2'] * y;
+            dy += coeffs['2,1'] * x * x;
+            dy += 2 * coeffs['1,2'] * x * y;
+            dy += 3 * coeffs['0,3'] * y * y;
+
+            return { dx, dy };
+        };
+
+        const getLatex = (coeffs) => {
+            let str = "";
+            const terms = [
+                {k: '3,0', t: 'x^3'}, {k: '2,1', t: 'x^2y'}, {k: '1,2', t: 'xy^2'}, {k: '0,3', t: 'y^3'},
+                {k: '2,0', t: 'x^2'}, {k: '1,1', t: 'xy'}, {k: '0,2', t: 'y^2'},
+                {k: '1,0', t: 'x'}, {k: '0,1', t: 'y'}, {k: '0,0', t: ''}
+            ];
+
+            let isFirst = true;
+            for (let term of terms) {
+                const c = coeffs[term.k];
+                if (Math.abs(c) > 0.01) {
+                    const sign = c >= 0 ? (isFirst ? "" : "+") : "-";
+                    const val = Math.abs(c).toFixed(2);
+                    str += `${sign} ${val}${term.t} `;
+                    isFirst = false;
+                }
+            }
+            return str + " = 0";
+        };
+
+        // --- MAIN COMPONENT ---
+        function ImplicitPlotter() {
+            const canvasRef = useRef(null);
+            const overlayRef = useRef(null);
+            const [coeffs, setCoeffs] = useState(generatePolynomial());
+            const [mousePos, setMousePos] = useState({ x: 0, y: 0 }); // In math coordinates
+            const [grad, setGrad] = useState({ dx: 0, dy: 0 });
+            const [isSingularity, setIsSingularity] = useState(false);
+
+            // Re-render Latex when coefficients change
+            useEffect(() => {
+                if (window.MathJax) {
+                    window.MathJax.typesetPromise && window.MathJax.typesetPromise();
+                }
+            }, [coeffs]);
+
+            // Draw the Implicit Curve (Background)
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width;
+                const h = canvas.height;
+                
+                const imgData = ctx.createImageData(w, h);
+                const data = imgData.data;
+
+                // We want to visualize f(x,y) = 0.
+                // Distance field approximation: |f(x,y)| / |grad(f)| < thickness
+                
+                for (let py = 0; py < h; py++) {
+                    const y = RANGE - (py / h) * (2 * RANGE);
+                    for (let px = 0; px < w; px++) {
+                        const x = -RANGE + (px / w) * (2 * RANGE);
+                        
+                        const val = evaluate(coeffs, x, y);
+                        const { dx, dy } = getGradient(coeffs, x, y);
+                        const gradMag = Math.sqrt(dx*dx + dy*dy);
+                        
+                        // Distance estimation to the curve
+                        const dist = Math.abs(val) / (gradMag + 0.0001);
+
+                        // Pixel index
+                        const idx = (py * w + px) * 4;
+
+                        // Background: Dark Slate 950 (#020617) -> R2 G6 B23
+                        // Curve: Pink-500 (#ec4899) -> R236 G72 B153
+                        
+                        if (dist < 0.04) {
+                            // Antialiasing-ish
+                            const alpha = 1 - (dist / 0.04);
+                            data[idx] = 236;     // R
+                            data[idx + 1] = 72;  // G
+                            data[idx + 2] = 153; // B
+                            data[idx + 3] = 255 * alpha + (1-alpha)*20; // A mixture
+                        } else {
+                            // Subtle grid lines
+                            const gridX = Math.abs(x % 1) < 0.02 || Math.abs(x) < 0.02;
+                            const gridY = Math.abs(y % 1) < 0.02 || Math.abs(y) < 0.02;
+                            const isAxis = Math.abs(x) < 0.02 || Math.abs(y) < 0.02;
+                            
+                            if (isAxis) {
+                                data[idx] = 255; data[idx+1] = 255; data[idx+2] = 255; data[idx+3] = 40;
+                            } else if (gridX || gridY) {
+                                data[idx] = 255; data[idx+1] = 255; data[idx+2] = 255; data[idx+3] = 10;
+                            } else {
+                                data[idx] = 2; data[idx+1] = 6; data[idx+2] = 23; data[idx+3] = 255;
+                            }
+                        }
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+            }, [coeffs]);
+
+            // Handle Interaction & Overlay Drawing
+            const handleMouseMove = (e) => {
+                const rect = canvasRef.current.getBoundingClientRect();
+                // The canvas is drawn scaled to fit (see .plot-box), so convert to canvas pixels.
+                const px = (e.clientX - rect.left) * WIDTH / rect.width;
+                const py = (e.clientY - rect.top) * HEIGHT / rect.height;
+
+                // Convert to math coords (Mouse Input)
+                const mx = -RANGE + (px / WIDTH) * (2 * RANGE);
+                const my = RANGE - (py / HEIGHT) * (2 * RANGE);
+
+                // Project Mouse Input onto the curve f(x,y)=0
+                // Newton-Raphson iteration
+                let x = mx;
+                let y = my;
+                
+                for(let i=0; i<10; i++) {
+                    const val = evaluate(coeffs, x, y);
+                    // Optimization: if close enough, stop
+                    if (Math.abs(val) < 1e-4) break;
+
+                    const { dx, dy } = getGradient(coeffs, x, y);
+                    const magSq = dx*dx + dy*dy;
+                    
+                    if (magSq < 1e-6) break; // Gradient vanished (singularity)
+                    
+                    const step = val / magSq;
+                    x -= dx * step;
+                    y -= dy * step;
+                }
+                
+                // Safety check
+                if (!Number.isFinite(x) || !Number.isFinite(y)) {
+                    x = mx;
+                    y = my;
+                }
+
+                setMousePos({ x, y });
+                
+                const g = getGradient(coeffs, x, y);
+                setGrad(g);
+
+                const mag = Math.sqrt(g.dx*g.dx + g.dy*g.dy);
+                setIsSingularity(mag < 0.1); 
+            };
+
+            // Draw Kernel / Gradient Overlay
+            useEffect(() => {
+                const canvas = overlayRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+                // Convert math coords back to pixel coords for drawing
+                const toPx = (x, y) => ({
+                    x: ((x + RANGE) / (2 * RANGE)) * WIDTH,
+                    y: ((RANGE - y) / (2 * RANGE)) * HEIGHT
+                });
+
+                const center = toPx(mousePos.x, mousePos.y);
+
+                ctx.beginPath();
+                if (isSingularity) {
+                    // Draw Large Low-Opacity Square for Singularity (~3cm at 96DPI is approx 113px)
+                    const sqSize = 113;
+                    ctx.rect(center.x - sqSize / 2, center.y - sqSize / 2, sqSize, sqSize);
+                    ctx.fillStyle = 'rgba(244, 63, 94, 0.3)'; // Rose-500 with 30% opacity
+                } else {
+                    // Draw Circle for regular point
+                    ctx.arc(center.x, center.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#38bdf8'; // Sky-400
+                }
+                
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                if (!isSingularity) {
+                    // Normalize Gradient
+                    const mag = Math.sqrt(grad.dx*grad.dx + grad.dy*grad.dy);
+                    const nx = grad.dx / mag;
+                    const ny = grad.dy / mag;
+
+                    // Kernel is orthogonal to gradient (-ny, nx)
+                    const kx = -ny;
+                    const ky = nx;
+
+                    const lineLen = 1000; // Long line to simulate tangent line
+
+                    // Draw Kernel Line (Tangent)
+                    ctx.beginPath();
+                    // Draw from -len to +len in kernel direction
+                    // Note: y-axis is flipped in canvas, so we need to be careful with visual slopes
+                    // Math y increases Up. Canvas y increases Down.
+                    // Visual vector for (vx, vy) in math is (vx, -vy) in canvas.
+                    
+                    const p1 = toPx(mousePos.x + kx * 4, mousePos.y + ky * 4);
+                    const p2 = toPx(mousePos.x - kx * 4, mousePos.y - ky * 4);
+
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.strokeStyle = '#fbbf24'; // Amber-400
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Optional: Draw Gradient Vector (small)
+                    const gEnd = toPx(mousePos.x + nx * 0.5, mousePos.y + ny * 0.5);
+                    ctx.beginPath();
+                    ctx.moveTo(center.x, center.y);
+                    ctx.lineTo(gEnd.x, gEnd.y);
+                    ctx.strokeStyle = '#94a3b8'; // Slate-400
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([2, 2]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+            }, [mousePos, grad, isSingularity]);
+
+            return (
+                <div className="flex flex-col h-full bg-slate-950">
+                    {/* Header */}
+                    <header className="bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between shrink-0 z-10 shadow-md">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-pink-500/20 rounded-lg border border-pink-500/30">
+                                <Icon size={24} className="text-pink-400"><path d="M3 3v18h18"/><path d="M18.4 8.7a9 9 0 0 0-14.8 6.6"/></Icon>
+                            </div>
+                            <h1 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-amber-200 bg-clip-text text-transparent">
+                                Smooth or Singular?
+                            </h1>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => setCoeffs(generatePolynomial(true))}
+                                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-300 px-4 py-2 rounded-lg font-medium transition-colors border border-slate-700 hover:border-amber-500/50"
+                                title="Load a specific singular curve"
+                            >
+                                <Zap size={18} /> Singular
+                            </button>
+                            <button 
+                                onClick={() => setCoeffs(generatePolynomial(false))}
+                                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg font-medium transition-colors border border-slate-700 hover:border-pink-500/50"
+                                title="Generate random curve (might still be singular)"
+                            >
+                                <RefreshCw size={18} /> Random
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Main Workspace */}
+                    <main className="flex-1 flex overflow-hidden">
+                        
+                        {/* Visualization Area */}
+                        <div className="plot-area flex-1 relative bg-slate-950 flex items-center justify-center p-4 overflow-hidden">
+                            <div className="plot-box relative shadow-2xl rounded-lg overflow-hidden border border-slate-800 bg-black">
+                                <canvas 
+                                    ref={canvasRef} 
+                                    width={WIDTH} 
+                                    height={HEIGHT} 
+                                    className="block"
+                                />
+                                <canvas 
+                                    ref={overlayRef} 
+                                    width={WIDTH} 
+                                    height={HEIGHT} 
+                                    onMouseMove={handleMouseMove}
+                                    className="absolute inset-0 cursor-crosshair touch-none"
+                                />
+                                
+                                {/* Overlay Stats */}
+                                <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur border border-slate-700/50 p-3 rounded-lg text-xs font-mono text-slate-400 pointer-events-none space-y-1">
+                                    <div className="flex gap-4">
+                                        <span>x: {mousePos.x.toFixed(2)}</span>
+                                        <span>y: {mousePos.y.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex gap-4 border-t border-slate-700/50 pt-1 mt-1">
+                                        <span className="text-pink-400">f(x,y) = {evaluate(coeffs, mousePos.x, mousePos.y).toFixed(3)}</span>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <span>∇f = [{grad.dx.toFixed(2)}, {grad.dy.toFixed(2)}]</span>
+                                    </div>
+                                </div>
+
+                                {/* Singularity Alert */}
+                                {isSingularity && (
+                                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-rose-500 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-rose-500/40 flex items-center gap-2 animate-bounce">
+                                        <AlertTriangle size={20} className="fill-white text-rose-600" />
+                                        SINGULARITY DETECTED!
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Sidebar Info */}
+                        <div className="w-80 bg-slate-900 border-l border-slate-800 p-6 flex flex-col gap-6 shrink-0 overflow-y-auto">
+                            
+                            <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Equation</h3>
+                                <div className="text-lg text-pink-300 font-serif leading-relaxed min-h-[3rem] flex items-center overflow-x-auto w-full math-scroll">
+                                    {/* Using MathJax via a simple div container */}
+                                    <span className="whitespace-nowrap pb-2">$$ {getLatex(coeffs)} $$</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 text-sm text-slate-400">
+                                <h3 className="text-slate-200 font-bold flex items-center gap-2">
+                                    <Info size={16} className="text-amber-400" /> Legend
+                                </h3>
+                                <div className="space-y-3 pl-2 border-l-2 border-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded bg-pink-500"></div>
+                                        <span>Solution Set <span className="font-mono text-xs">f(x,y)=0</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-1 bg-amber-400"></div>
+                                        <span>Kernel (Tangent Space)</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-0 border-t border-dashed border-slate-400"></div>
+                                        <span>Gradient <span className="font-mono text-xs">∇f</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-auto bg-slate-800/30 p-4 rounded-lg text-xs text-slate-500 leading-relaxed border border-slate-800">
+                                <p className="mb-2">
+                                    <strong>The Kernel</strong> of the gradient $\nabla f$ at a point $p$ consists of all vectors $v$ such that $\nabla f(p) \cdot v = 0$.
+                                </p>
+                                <p>
+                                    Geometrically, this represents the <strong>tangent line</strong> to the level curve passing through that point. At a <strong>singularity</strong>, the gradient vanishes, and the tangent space is undefined (or the whole plane).
+                                </p>
+                            </div>
+
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ImplicitPlotter />);
+    </script>
+</body>
+</html>

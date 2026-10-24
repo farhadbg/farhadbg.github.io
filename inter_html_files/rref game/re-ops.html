@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualising Gaussian Elimination</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Custom scrollbar for the 3D container and matrix on mobile */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen selection:bg-cyan-500/30">
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel pinned to 7: version 8 compiles this script to ES-module imports, which a plain
+         text/babel script cannot run, and the figure stays blank -->
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+    <script type="text/babel" data-presets="env,react">
+        const { useState, useEffect, useRef } = React;
+
+        // --- INLINE ICON COMPONENTS (replacing lucide-react) ---
+        const I = ({children, className, ...p}) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>{children}</svg>
+        );
+        const Trophy = (p) => <I {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></I>;
+        const RefreshCw = (p) => <I {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></I>;
+        const RotateCcw = (p) => <I {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></I>;
+        const Timer = (p) => <I {...p}><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="12" y1="14" y2="8"/><circle cx="12" cy="14" r="8"/></I>;
+        const Volume2 = (p) => <I {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></I>;
+        const VolumeX = (p) => <I {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></I>;
+        const GripVertical = (p) => <I {...p}><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></I>;
+        const ArrowRight = (p) => <I {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></I>;
+        const Calculator = (p) => <I {...p}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></I>;
+        const Box = (p) => <I {...p}><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></I>;
+        const Eye = (p) => <I {...p}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></I>;
+        const EyeOff = (p) => <I {...p}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></I>;
+        const ZoomIn = (p) => <I {...p}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></I>;
+        const ZoomOut = (p) => <I {...p}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></I>;
+
+        // --- FRACTION ENGINE ---
+        const gcd = (a, b) => {
+          return b ? gcd(b, a % b) : Math.abs(a);
+        };
+
+        const Fraction = {
+          create: (n, d = 1) => {
+            if (d === 0) throw new Error("Division by zero");
+            if (d < 0) { n = -n; d = -d; }
+            const common = gcd(n, d);
+            return { n: n / common, d: d / common };
+          },
+          fromString: (str) => {
+            if (!str) return Fraction.create(0);
+            if (str === '-') return Fraction.create(-1);
+            if (str === '+') return Fraction.create(1);
+            const parts = str.split('/');
+            if (parts.length === 2) {
+              return Fraction.create(parseInt(parts[0]), parseInt(parts[1]));
+            }
+            if (str.includes('.')) {
+                const num = parseFloat(str);
+                const len = str.split('.')[1].length;
+                const den = Math.pow(10, len);
+                return Fraction.create(Math.round(num * den), den);
+            }
+            const parsed = parseInt(str);
+            return isNaN(parsed) ? Fraction.create(1) : Fraction.create(parsed);
+          },
+          add: (a, b) => {
+            return Fraction.create(a.n * b.d + b.n * a.d, a.d * b.d);
+          },
+          mul: (a, b) => {
+            return Fraction.create(a.n * b.n, a.d * b.d);
+          },
+          eq: (a, b) => a.n === b.n && a.d === b.d,
+          isZero: (a) => a.n === 0,
+          isOne: (a) => a.n === 1 && a.d === 1,
+          toFloat: (a) => a.n / a.d,
+          toString: (a) => {
+            if (a.d === 1) return `${a.n}`;
+            return `${a.n}/${a.d}`;
+          }
+        };
+
+        // --- 3D VISUALIZATION COMPONENT ---
+        const ThreeScene = ({ matrix }) => {
+          const mountRef = useRef(null);
+          const sceneRef = useRef(null);
+          const planesRef = useRef([]);
+          const intersectionRef = useRef(null);
+          const requestRef = useRef(null);
+          const observerRef = useRef(null);
+          const matrixRef = useRef(matrix);
+
+          const getRowCoeffs = (row) => {
+            return row.map(val => Fraction.toFloat(val));
+          };
+
+          useEffect(() => {
+            const loadScripts = async () => {
+              if (window.THREE) return Promise.resolve();
+              
+              return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+                script.onload = () => {
+                  const controlsScript = document.createElement('script');
+                  controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+                  controlsScript.onload = resolve;
+                  document.body.appendChild(controlsScript);
+                };
+                script.onerror = reject;
+                document.body.appendChild(script);
+              });
+            };
+
+            loadScripts().then(() => {
+              initScene();
+            });
+
+            return () => {
+              if (requestRef.current) cancelAnimationFrame(requestRef.current);
+              if (observerRef.current) observerRef.current.disconnect();
+              if (sceneRef.current && mountRef.current) {
+                mountRef.current.innerHTML = '';
+              }
+            };
+          }, []);
+
+          useEffect(() => {
+            if (!mountRef.current || !sceneRef.current) return;
+
+            observerRef.current = new ResizeObserver((entries) => {
+               for(let entry of entries) {
+                  const { width, height } = entry.contentRect;
+                  if (width > 0 && height > 0) {
+                      const { camera, renderer } = sceneRef.current;
+                      camera.aspect = width / height;
+                      camera.updateProjectionMatrix();
+                      renderer.setSize(width, height);
+                  }
+               }
+            });
+            
+            observerRef.current.observe(mountRef.current);
+            return () => {
+                if (observerRef.current) observerRef.current.disconnect();
+            };
+          }, [sceneRef.current]);
+
+          useEffect(() => {
+            matrixRef.current = matrix;
+          }, [matrix]);
+
+          const computeIntersectionPoint = (mat) => {
+            if (!mat || mat.length < 3) return null;
+            try {
+              const A = [];
+              const b = [];
+              for (let i = 0; i < 3; i++) {
+                const row = mat[i];
+                A.push([
+                  Fraction.toFloat(row[0]),
+                  Fraction.toFloat(row[1]),
+                  Fraction.toFloat(row[2]),
+                ]);
+                b.push(Fraction.toFloat(row[3]));
+              }
+
+              for (let i = 0; i < 3; i++) {
+                let pivot = i;
+                for (let r = i + 1; r < 3; r++) {
+                  if (Math.abs(A[r][i]) > Math.abs(A[pivot][i])) pivot = r;
+                }
+                if (Math.abs(A[pivot][i]) < 1e-6) return null;
+                if (pivot !== i) {
+                  [A[i], A[pivot]] = [A[pivot], A[i]];
+                  [b[i], b[pivot]] = [b[pivot], b[i]];
+                }
+                const div = A[i][i];
+                for (let c = i; c < 3; c++) A[i][c] /= div;
+                b[i] /= div;
+                for (let r = 0; r < 3; r++) {
+                  if (r === i) continue;
+                  const factor = A[r][i];
+                  for (let c = i; c < 3; c++) A[r][c] -= factor * A[i][c];
+                  b[r] -= factor * b[i];
+                }
+              }
+              return { x: b[0], y: b[1], z: b[2] };
+            } catch {
+              return null;
+            }
+          };
+
+          useEffect(() => {
+            if (!sceneRef.current || planesRef.current.length === 0) return;
+            const THREE = window.THREE;
+            
+            matrix.forEach((row, i) => {
+              if (!planesRef.current[i]) return;
+              const [a, b, c, d] = getRowCoeffs(row);
+              const mesh = planesRef.current[i];
+              const normal = new THREE.Vector3(a, b, c);
+              const lenSq = normal.lengthSq();
+              if (lenSq < 0.00001) {
+                mesh.visible = false; 
+              } else {
+                mesh.visible = true;
+                const k = d / lenSq;
+                mesh.position.copy(normal.clone().multiplyScalar(k));
+                mesh.lookAt(mesh.position.clone().add(normal));
+              }
+            });
+
+            if (intersectionRef.current) {
+              const p = computeIntersectionPoint(matrix);
+              if (p) {
+                intersectionRef.current.position.set(p.x, p.y, p.z);
+                intersectionRef.current.visible = true;
+              } else {
+                intersectionRef.current.visible = false;
+              }
+            }
+          }, [matrix]);
+
+          const initScene = () => {
+            if (!mountRef.current) return;
+            const THREE = window.THREE;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a); 
+            scene.fog = new THREE.Fog(0x0f172a, 10, 50);
+
+            const width = mountRef.current.clientWidth;
+            const height = mountRef.current.clientHeight;
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(12, 10, 12); 
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            mountRef.current.appendChild(renderer.domElement);
+
+            let controls;
+            if (window.THREE.OrbitControls) {
+              controls = new window.THREE.OrbitControls(camera, renderer.domElement);
+              controls.enableDamping = true;
+              controls.dampingFactor = 0.05;
+              controls.enableZoom = true;
+              controls.minDistance = 3;
+              controls.maxDistance = 50;
+            }
+
+            const axesLength = 10 / 9; 
+            const axesHelper = new THREE.AxesHelper(axesLength);
+            if (Array.isArray(axesHelper.material)) {
+              axesHelper.material.forEach((m) => m.color.set(0xffffff));
+            } else if (axesHelper.material && axesHelper.material.color) {
+              axesHelper.material.color.set(0xffffff);
+            }
+            scene.add(axesHelper);
+            
+            const gridHelper = new THREE.GridHelper(40 / 3, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            const rowColors = [0xff4444, 0x44ff44, 0x4444ff];
+            const planes = [];
+            const geometry = new THREE.PlaneGeometry(20 / 3, 20 / 3);
+            const edgesGeometry = new THREE.EdgesGeometry(geometry); 
+
+            const numRows = (matrixRef.current && matrixRef.current.length) || 3;
+
+            for (let i = 0; i < numRows; i++) {
+              const col = rowColors[i % rowColors.length];
+              const material = new THREE.MeshPhongMaterial({ 
+                color: col, 
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                opacity: 0.4,
+                depthWrite: false 
+              });
+              const mesh = new THREE.Mesh(geometry, material);
+              const lineMaterial = new THREE.LineBasicMaterial({ 
+                color: col, 
+                transparent: true, 
+                opacity: 0.9 
+              });
+              const wireframe = new THREE.LineSegments(edgesGeometry, lineMaterial);
+              mesh.add(wireframe);
+              scene.add(mesh);
+              planes.push(mesh);
+            }
+            planesRef.current = planes;
+
+            const intersectionGeom = new THREE.SphereGeometry(0.15, 16, 16);
+            const intersectionMat = new THREE.MeshStandardMaterial({
+              color: 0xffff00,
+              emissive: 0xffff00,
+              emissiveIntensity: 0.6,
+            });
+            const intersectionMesh = new THREE.Mesh(intersectionGeom, intersectionMat);
+            intersectionMesh.visible = false;
+            scene.add(intersectionMesh);
+            intersectionRef.current = intersectionMesh;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            sceneRef.current = { scene, camera, renderer, controls };
+
+            const currentMatrix = matrixRef.current || [];
+            currentMatrix.forEach((row, i) => {
+              if (!planes[i]) return;
+              const [a, b, c, d] = getRowCoeffs(row);
+              const mesh = planes[i];
+              const normal = new THREE.Vector3(a, b, c);
+              const lenSq = normal.lengthSq();
+              if (lenSq > 0.00001) {
+                const k = d / lenSq;
+                mesh.position.copy(normal.clone().multiplyScalar(k));
+                mesh.lookAt(mesh.position.clone().add(normal));
+              } else {
+                mesh.visible = false;
+              }
+            });
+
+            if (intersectionRef.current) {
+              const p = computeIntersectionPoint(currentMatrix);
+              if (p) {
+                intersectionRef.current.position.set(p.x, p.y, p.z);
+                intersectionRef.current.visible = true;
+              } else {
+                intersectionRef.current.visible = false;
+              }
+            }
+
+            const animate = () => {
+              requestRef.current = requestAnimationFrame(animate);
+              if (controls) controls.update();
+              renderer.render(scene, camera);
+            };
+            animate();
+          };
+
+          return <div ref={mountRef} className="w-full h-full rounded-xl overflow-hidden shadow-inner border border-slate-700 bg-black/20" />;
+        };
+
+        const generatePuzzle = () => {
+          const rows = 3;
+          const cols = 4;
+          const randRHS = () => Math.floor(Math.random() * 3) - 1;
+          const withinBounds = (mat) => {
+            const lastCol = mat[0].length - 1;
+            for (let r = 0; r < mat.length; r++) {
+              for (let c = 0; c < mat[0].length; c++) {
+                const v = Fraction.toFloat(mat[r][c]);
+                const min = c === lastCol ? -1 : -3;
+                const max = c === lastCol ? 1 : 3;
+                if (v < min || v > max) return false;
+              }
+            }
+            return true;
+          };
+
+          while (true) {
+            let m = [
+              [Fraction.create(1), Fraction.create(0), Fraction.create(0), Fraction.create(randRHS())],
+              [Fraction.create(0), Fraction.create(1), Fraction.create(0), Fraction.create(randRHS())],
+              [Fraction.create(0), Fraction.create(0), Fraction.create(1), Fraction.create(randRHS())]
+            ];
+            const operations = 4 + Math.floor(Math.random() * 3); 
+            for (let k = 0; k < operations; k++) {
+              const opType = Math.floor(Math.random() * 3);
+              const r1 = Math.floor(Math.random() * rows);
+              let r2 = Math.floor(Math.random() * rows);
+              while (r2 === r1) r2 = Math.floor(Math.random() * rows);
+              if (opType === 0) { 
+                const sign = Math.random() > 0.5 ? 1 : -1;
+                const factor = Fraction.create(sign);
+                m[r2] = m[r2].map((val, idx) =>
+                  Fraction.add(val, Fraction.mul(m[r1][idx], factor))
+                );
+              } else if (opType === 1) { 
+                [m[r1], m[r2]] = [m[r2], m[r1]];
+              } else { 
+                if (Math.random() > 0.8) {
+                  const sign = Math.random() > 0.5 ? 1 : -1;
+                  const factor = Fraction.create(sign);
+                  m[r1] = m[r1].map(val => Fraction.mul(val, factor));
+                }
+              }
+            }
+            if (withinBounds(m)) return m;
+          }
+        };
+
+        const checkRREF = (matrix) => {
+          const rows = matrix.length;
+          const cols = matrix[0].length;
+          let lastPivotCol = -1;
+          for (let r = 0; r < rows; r++) {
+            let pivotCol = -1;
+            for (let c = 0; c < cols; c++) {
+              if (!Fraction.isZero(matrix[r][c])) { pivotCol = c; break; }
+            }
+            if (pivotCol === -1) continue;
+            if (!Fraction.isOne(matrix[r][pivotCol])) return false;
+            if (pivotCol <= lastPivotCol) return false;
+            for (let k = 0; k < rows; k++) {
+              if (k !== r && !Fraction.isZero(matrix[k][pivotCol])) return false;
+            }
+            lastPivotCol = pivotCol;
+          }
+          return true;
+        };
+
+        function GaussianGame() {
+          const [matrix, setMatrix] = useState([]);
+          const [history, setHistory] = useState([]);
+          const [gameActive, setGameActive] = useState(false);
+          const [won, setWon] = useState(false);
+          const [showMatrix, setShowMatrix] = useState(true); 
+          
+          const [startTime, setStartTime] = useState(0);
+          const [elapsed, setElapsed] = useState(0);
+          const [finalTime, setFinalTime] = useState(0);
+
+          const [lambda, setLambda] = useState("1");
+          const [rowI, setRowI] = useState(0);
+          const [rowJ, setRowJ] = useState(1);
+          
+          const [scaleInputs, setScaleInputs] = useState({}); 
+          const [draggedRow, setDraggedRow] = useState(null);
+          const [lastOperation, setLastOperation] = useState("");
+          const [showOperationHint, setShowOperationHint] = useState(false);
+          
+          const winAudioRef = useRef(null);
+          const [isMuted, setIsMuted] = useState(false);
+
+          // Initial split: 0.7 (70% Visualizer / 30% Matrix area)
+          // Adjusted default split since Visualizer is now on the left.
+          const [splitRatio, setSplitRatio] = useState(0.7);
+          const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+          const layoutRef = useRef(null);
+          
+          // --- ZOOM STATE ---
+          const [zoomLevel, setZoomLevel] = useState(0.9);
+
+          // Track Window Width for responsive calculations
+          const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+          useEffect(() => {
+            const handleResize = () => setWindowWidth(window.innerWidth);
+            window.addEventListener('resize', handleResize);
+            return () => window.removeEventListener('resize', handleResize);
+          }, []);
+
+          // Calculate dynamic base font size for the matrix container
+          // This allows all em-based children to scale with the splitRatio/width
+          const isDesktop = windowWidth >= 1024;
+          // Matrix is now on the right (or bottom), so it takes (1 - splitRatio) width on desktop
+          const baseFontSize = isDesktop 
+            ? Math.max(10, windowWidth * (1 - splitRatio) * 0.04) 
+            : 13; // Slightly smaller base font for mobile
+            
+          const matrixFontSize = (baseFontSize * zoomLevel).toFixed(1) + 'px';
+
+          useEffect(() => { startNewGame(); }, []);
+
+          useEffect(() => {
+            let interval;
+            if (gameActive && !won) {
+              interval = setInterval(() => { setElapsed(Date.now() - startTime); }, 100);
+            }
+            return () => clearInterval(interval);
+          }, [gameActive, won, startTime]);
+
+          useEffect(() => {
+            if (!gameActive || won) {
+              setShowOperationHint(false);
+              return;
+            }
+            const intervalId = setInterval(() => {
+              setShowOperationHint(true);
+              setTimeout(() => setShowOperationHint(false), 10000);
+            }, 30000);
+            return () => clearInterval(intervalId);
+          }, [gameActive, won]);
+
+          useEffect(() => {
+            if (!isDraggingSplit) return;
+            const handleMove = (e) => {
+              if (!layoutRef.current) return;
+              const rect = layoutRef.current.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              if (rect.width <= 0) return;
+              let ratio = x / rect.width;
+              ratio = Math.max(0.2, Math.min(0.8, ratio));
+              setSplitRatio(ratio);
+            };
+            const handleUp = () => {
+              setIsDraggingSplit(false);
+              document.body.style.userSelect = "";
+            };
+            document.body.style.userSelect = "none";
+            window.addEventListener("mousemove", handleMove);
+            window.addEventListener("mouseup", handleUp);
+            return () => {
+              window.removeEventListener("mousemove", handleMove);
+              window.removeEventListener("mouseup", handleUp);
+              document.body.style.userSelect = "";
+            };
+          }, [isDraggingSplit]);
+
+          const startNewGame = () => {
+            const newMatrix = generatePuzzle();
+            setMatrix(newMatrix);
+            setHistory([]);
+            setWon(false);
+            setGameActive(true);
+            setStartTime(Date.now());
+            setElapsed(0);
+            setScaleInputs({});
+            setLambda("1"); setRowI(0); setRowJ(1);
+          };
+
+          const updateMatrix = (newMatrix) => {
+            setHistory([...history, matrix]);
+            setMatrix(newMatrix);
+            if (checkRREF(newMatrix)) handleWin();
+          };
+
+          const handleScaleInputKey = (e, rowIndex) => {
+            if (e.key === 'Enter') {
+              const val = scaleInputs[rowIndex];
+              if (!val) return;
+              try {
+                const scalar = Fraction.fromString(val);
+                if (Fraction.isZero(scalar)) { alert("Cannot multiply a row by zero!"); return; }
+                const newMatrix = matrix.map((row, idx) => {
+                  if (idx === rowIndex) return row.map(v => Fraction.mul(v, scalar));
+                  return row;
+                });
+                updateMatrix(newMatrix);
+                const newInputs = {...scaleInputs};
+                delete newInputs[rowIndex];
+                setScaleInputs(newInputs);
+              } catch (err) { alert("Invalid number"); }
+            }
+          };
+
+          const handleDragStart = (e, index) => {
+            setDraggedRow(index);
+            e.dataTransfer.effectAllowed = "move";
+            setTimeout(() => {}, 0);
+          };
+
+          const handleDragOver = (e, index) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          };
+
+          const handleDrop = (e, targetIndex) => {
+            e.preventDefault();
+            if (draggedRow === null || draggedRow === targetIndex) return;
+            const newMatrix = [...matrix];
+            const temp = newMatrix[draggedRow];
+            newMatrix[draggedRow] = newMatrix[targetIndex];
+            newMatrix[targetIndex] = temp;
+            updateMatrix(newMatrix);
+            setDraggedRow(null);
+          };
+
+          const executeFormula = () => {
+            try {
+              const s2 = lambda.trim() === "" ? Fraction.create(1) : Fraction.fromString(lambda);
+              if (!matrix[rowI] || !matrix[rowJ]) return;
+              const newMatrix = matrix.map((row, idx) => {
+                if (idx === rowJ) {
+                  return row.map((_, colIdx) => {
+                    const term1 = Fraction.mul(matrix[rowI][colIdx], s2);
+                    const term2 = matrix[rowJ][colIdx];
+                    return Fraction.add(term1, term2);
+                  });
+                }
+                return row;
+              });
+              updateMatrix(newMatrix);
+              const iIndex = rowI + 1;
+              const jIndex = rowJ + 1;
+              const lambdaDisplay = lambda.trim() === "" ? "1" : lambda.trim();
+              setLastOperation(`R_${jIndex} := ${lambdaDisplay}·R_${iIndex} + R_${jIndex}`);
+            } catch (e) { alert("Invalid number format"); }
+          };
+
+          const undo = () => {
+            if (history.length === 0) return;
+            const prev = history[history.length - 1];
+            setMatrix(prev);
+            setHistory(history.slice(0, -1));
+          };
+
+          const handleWin = () => {
+            setWon(true);
+            setGameActive(false);
+            setFinalTime((Date.now() - startTime) / 1000);
+            if (winAudioRef.current && !isMuted) {
+                winAudioRef.current.currentTime = 0;
+                winAudioRef.current.play();
+            }
+            const u = new SpeechSynthesisUtterance("Oh Yeah! Matrix Reduced.");
+            u.rate = 1.1;
+            window.speechSynthesis.speak(u);
+          };
+
+          const startSplitDrag = (e) => {
+            e.preventDefault();
+            setIsDraggingSplit(true);
+          };
+
+          const renderCell = (f) => {
+            return (
+              <div className="flex flex-col items-center justify-center">
+                {f.d === 1 ? (
+                  <span>{f.n}</span>
+                ) : (
+                  <div className="flex flex-col items-center leading-none">
+                    <span className="border-b border-slate-400 px-1 mb-0.5">{f.n}</span>
+                    <span>{f.d}</span>
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col p-2 lg:p-4 font-sans items-center overflow-hidden">
+              <audio ref={winAudioRef} src="https://assets.mixkit.co/sfx/preview/mixkit-small-crowd-cheer-and-applause-526.mp3" />
+              
+              {/* HEADER */}
+              <div className="w-full max-w-7xl flex flex-col lg:flex-row justify-between items-center mb-2 bg-slate-800 p-3 rounded-xl shadow-lg border border-slate-700 gap-3">
+                <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-start">
+                  <h1 className="text-xl lg:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                    Visualising Gaussian Elimination
+                  </h1>
+                  <div className="bg-slate-900 px-3 py-1 rounded font-mono text-cyan-300 flex items-center gap-2 text-sm lg:text-base whitespace-nowrap">
+                     <Timer className="w-4 h-4"/>
+                     {(won ? finalTime : elapsed / 1000).toFixed(1)}s
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 w-full lg:w-auto justify-center lg:justify-end">
+                   <button 
+                     onClick={() => setShowMatrix(!showMatrix)} 
+                     className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition text-xs lg:text-sm"
+                   >
+                     {showMatrix ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                     <span className="hidden sm:inline">{showMatrix ? "Hide Matrix" : "Show Matrix"}</span>
+                   </button>
+
+                   <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-slate-700 rounded-full transition">
+                     {isMuted ? <VolumeX className="w-5 h-5 text-slate-500"/> : <Volume2 className="w-5 h-5 text-emerald-400"/>}
+                   </button>
+                   <button 
+                     onClick={undo} 
+                     disabled={history.length === 0 || won}
+                     className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded-lg transition text-xs lg:text-sm"
+                   >
+                     <RotateCcw className="w-4 h-4" /> Undo
+                   </button>
+                   <button 
+                     onClick={startNewGame} 
+                     className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold shadow-lg transition text-xs lg:text-sm"
+                   >
+                     <RefreshCw className="w-4 h-4" /> Reset
+                   </button>
+                </div>
+              </div>
+
+              <p className="text-slate-400 text-sm mb-4 font-mono text-center">
+                Apply different Gaussian operations and see the effect. How fast can you reach row-reduced echelon form?
+              </p>
+
+              {/* MAIN GAME AREA */}
+              <div
+                ref={layoutRef}
+                className="flex flex-col lg:flex-row gap-2 lg:gap-4 w-full max-w-7xl h-[calc(100vh-140px)] items-stretch transition-all duration-500"
+              >
+                
+                {/* COLUMN 1: 3D VIEW (LEFT on Desktop, TOP on Mobile) */}
+                <div
+                  className={`
+                    bg-slate-800 rounded-xl border border-slate-700 p-2 flex flex-col transition-all duration-500 ease-in-out
+                    ${showMatrix ? 'flex-1 lg:flex-auto min-h-[30vh]' : 'w-full h-full'}
+                  `}
+                  style={
+                    (showMatrix && isDesktop)
+                      ? {
+                          flexBasis: `${splitRatio * 100}%`,
+                          minWidth: "260px",
+                        }
+                      : {}
+                  }
+                >
+                    <div className="flex justify-between items-center px-2 pb-2 border-b border-slate-700 mb-2">
+                        <div className="flex items-center gap-2 text-cyan-400 font-bold">
+                            <Box className="w-5 h-5" />
+                            <span>visualisation</span>
+                        </div>
+                        <div className="flex gap-2 text-xs font-mono">
+                            <span className="text-red-400">● R1</span>
+                            <span className="text-green-400">● R2</span>
+                            <span className="text-blue-400">● R3</span>
+                        </div>
+                    </div>
+                    <div className="flex-grow relative rounded-lg overflow-hidden bg-black/20">
+                        <ThreeScene matrix={matrix} />
+                        <div className="absolute bottom-2 left-2 text-[10px] text-slate-500 pointer-events-none bg-slate-900/50 px-2 rounded">
+                            Drag to Rotate • Scroll to Zoom
+                        </div>
+                    </div>
+                </div>
+
+                {/* Vertical splitter for resizing (desktop only) */}
+                {showMatrix && (
+                  <div
+                    className="hidden lg:flex items-stretch px-1 cursor-col-resize"
+                    onMouseDown={startSplitDrag}
+                    title="Drag to resize panels"
+                  >
+                    <div
+                      className={`w-1 rounded-full ${
+                        isDraggingSplit
+                          ? "bg-cyan-400"
+                          : "bg-slate-600 hover:bg-slate-500"
+                      }`}
+                    />
+                  </div>
+                )}
+                
+                {/* COLUMN 2: MATRIX & CONTROLS (RIGHT on Desktop, BOTTOM on Mobile) */}
+                {showMatrix && (
+                    <div
+                      className="flex flex-col gap-2 lg:gap-4 animate-in fade-in slide-in-from-right-4 duration-500 overflow-y-auto lg:overflow-visible flex-shrink-0 lg:flex-shrink max-h-[40vh] lg:max-h-full scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent pr-1"
+                      style={{
+                        flexBasis: isDesktop ? `${(1 - splitRatio) * 100}%` : 'auto',
+                        maxWidth: "none",
+                        minWidth: "220px",
+                        fontSize: matrixFontSize
+                      }}
+                    >
+                        {/* ROW OPERATIONS BOX */}
+                        <div className="bg-slate-800 p-2 lg:p-4 rounded-xl border border-slate-700 flex flex-col gap-2 lg:gap-3 shadow-lg text-[0.9em]">
+                          <div className="flex flex-row justify-between items-center border-b border-slate-700 pb-2">
+                              <h3 className="font-bold text-base lg:text-lg text-emerald-400 flex items-center gap-2">
+                                <Calculator className="w-[1.2em] h-[1.2em]" /> Row Operation
+                              </h3>
+                              <div className="flex items-center gap-1">
+                                <button 
+                                    onClick={() => setZoomLevel(prev => Math.max(0.6, prev - 0.1))}
+                                    className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                                    title="Zoom Out"
+                                >
+                                    <ZoomOut className="w-4 h-4" />
+                                </button>
+                                <span className="text-xs text-slate-500 font-mono w-8 text-center hidden sm:inline-block">{Math.round(zoomLevel * 100)}%</span>
+                                <button 
+                                    onClick={() => setZoomLevel(prev => Math.min(1.5, prev + 0.1))}
+                                    className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                                    title="Zoom In"
+                                >
+                                    <ZoomIn className="w-4 h-4" />
+                                </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 justify-center mt-1">
+                            <div className="flex items-center gap-1 bg-slate-900/50 p-[0.3em] rounded-lg border border-slate-700">
+                              <input
+                                type="text"
+                                className="w-[2.5em] lg:w-[3em] bg-slate-800 border border-slate-600 rounded px-1 py-[0.2em] text-center font-mono text-white focus:border-cyan-400 outline-none"
+                                placeholder="1"
+                                value={lambda}
+                                onChange={(e) => setLambda(e.target.value)}
+                              />
+                              <span className="text-slate-400 font-serif italic">R</span>
+                              <select
+                                className="bg-slate-800 border border-slate-600 rounded px-1 py-[0.2em] text-white font-mono outline-none cursor-pointer hover:bg-slate-700"
+                                value={rowI}
+                                onChange={(e) => setRowI(parseInt(e.target.value))}
+                              >
+                                {matrix.map((_, i) => <option key={i} value={i}>{i + 1}</option>)}
+                              </select>
+                            </div>
+
+                            <span className="font-bold text-slate-400">+</span>
+                            
+                            <div className="flex items-center gap-1 bg-emerald-900/20 p-[0.3em] rounded-lg border border-emerald-500/30">
+                              <span className="text-emerald-400 font-serif italic">R</span>
+                              <select
+                                className="bg-slate-800 border border-slate-600 rounded px-1 py-[0.2em] text-white font-mono outline-none cursor-pointer hover:bg-slate-700"
+                                value={rowJ}
+                                onChange={(e) => setRowJ(parseInt(e.target.value))}
+                              >
+                                {matrix.map((_, i) => <option key={i} value={i}>{i + 1}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <ArrowRight className="w-[1em] h-[1em] text-slate-400 hidden sm:block" />
+                                <span className="text-xs font-mono text-slate-300 hidden sm:block">R_{rowJ + 1}</span>
+
+                                <button
+                                onClick={executeFormula}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-[0.3em] px-[0.8em] rounded shadow-lg active:scale-95 transition-all text-xs lg:text-sm"
+                                >
+                                APPLY
+                                </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* MATRIX BOX */}
+                        <div className="bg-slate-800 p-2 lg:p-6 rounded-2xl shadow-2xl border border-slate-700 flex-grow flex flex-col items-center justify-center relative w-full overflow-hidden min-h-[160px] lg:min-h-0">
+                        
+                        {won && (
+                            <div className="absolute inset-0 z-20 bg-slate-900/80 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm animate-in fade-in zoom-in">
+                                <Trophy className="w-16 h-16 lg:w-24 lg:h-24 text-yellow-400 mb-2 lg:mb-4 drop-shadow-lg animate-bounce" />
+                                <h2 className="text-2xl lg:text-4xl font-bold text-white mb-2">RREF ACHIEVED!</h2>
+                                <p className="text-lg lg:text-xl text-cyan-300 font-mono">Time: {finalTime.toFixed(2)}s</p>
+                                <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-8">
+                                    <button onClick={startNewGame} className="px-6 lg:px-8 py-2 lg:py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold rounded-full shadow-xl transition hover:scale-105 text-sm lg:text-base">
+                                        Play Again
+                                    </button>
+                                    <button onClick={() => window.location.href = 'blow-up.html'} className="px-6 lg:px-8 py-2 lg:py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-full shadow-xl transition hover:scale-105 text-sm lg:text-base">
+                                        Next Level
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-0 w-full text-[1em] flex-1 justify-center min-w-0">
+                            {matrix.map((row, rIndex) => (
+                                <div 
+                                key={rIndex}
+                                draggable={!won}
+                                onDragStart={(e) => handleDragStart(e, rIndex)}
+                                onDragOver={(e) => handleDragOver(e, rIndex)}
+                                onDrop={(e) => handleDrop(e, rIndex)}
+                                className={`
+                                    flex items-center py-[0.1em] px-[0.25em] rounded-lg transition-all w-full
+                                    hover:bg-slate-700/30 cursor-pointer group
+                                    ${draggedRow === rIndex ? 'opacity-50 border-dashed border-2 border-slate-500' : ''}
+                                `}
+                                >
+                                <div className="mr-[0.5em] lg:mr-[1em] p-[0.125em] rounded cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 shrink-0" title="Drag to swap rows">
+                                    <GripVertical className="w-[0.9em] h-[0.9em]" />
+                                </div>
+
+                                <div className="flex items-center mr-[0.5em] lg:mr-[1.5em] relative shrink-0">
+                                    <span className="absolute left-[0.5em] text-slate-500 text-[0.8em] font-mono">×</span>
+                                    <input 
+                                        type="text" 
+                                        disabled={won}
+                                        className="w-[3.5em] pl-[1.5em] pr-[0.5em] py-[0.1em] text-[0.9em] font-mono bg-slate-900 border border-slate-600 rounded text-cyan-300 focus:outline-none focus:border-cyan-400 transition-colors"
+                                        placeholder="1"
+                                        value={scaleInputs[rIndex] || ''}
+                                        onChange={(e) => setScaleInputs({...scaleInputs, [rIndex]: e.target.value})}
+                                        onKeyDown={(e) => handleScaleInputKey(e, rIndex)}
+                                    />
+                                </div>
+
+                                <div className="flex items-center flex-grow justify-center">
+                                    {/* Left Bracket */}
+                                    <div className={`w-[0.6em] border-l-[0.25em] self-stretch ${rIndex===0?'border-red-500':rIndex===1?'border-green-500':'border-blue-500'} ${rIndex===0?'border-t-[0.25em] rounded-tl-xl':''} ${rIndex===matrix.length-1?'border-b-[0.25em] rounded-bl-xl':''} shrink-0`}></div>
+                                    
+                                    {/* Cells Container */}
+                                    <div className="flex gap-[0.4em] px-[0.4em] flex-grow justify-around min-w-0">
+                                        {row.map((val, cIndex) => (
+                                            <div key={cIndex} className="flex-1 h-[2.5em] flex items-center justify-center text-[1.1em] font-mono font-bold relative min-w-0">
+                                                {cIndex === row.length - 1 && (
+                                                    <div className="absolute left-0 top-[10%] bottom-[10%] w-px bg-slate-600 -ml-[0.25em]"></div>
+                                                )}
+                                                {renderCell(val)}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Right Bracket */}
+                                    <div className={`w-[0.6em] border-r-[0.25em] self-stretch ${rIndex===0?'border-red-500':rIndex===1?'border-green-500':'border-blue-500'} ${rIndex===0?'border-t-[0.25em] rounded-tr-xl':''} ${rIndex===matrix.length-1?'border-b-[0.25em] rounded-br-xl':''} shrink-0`}></div>
+                                </div>
+                                
+                                <div className={`ml-[0.5em] lg:ml-[1em] font-mono text-[0.8em] w-[1.5em] font-bold shrink-0 ${rIndex===0?'text-red-400':rIndex===1?'text-green-400':'text-blue-400'}`}>
+                                    R{rIndex + 1}
+                                </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="mt-auto pt-2 lg:pt-4 text-slate-400 text-[0.7em] lg:text-[0.8em] font-mono flex flex-wrap justify-center gap-2 lg:gap-4">
+                            <span className="flex items-center gap-1"><GripVertical className="w-[1em] h-[1em]"/> Drag to Swap</span>
+                            <span className="flex items-center gap-1"><span className="border px-1 rounded text-[0.8em] border-slate-500">Enter</span> to Scale</span>
+                        </div>
+                        </div>
+                    </div>
+                )}
+
+              {showOperationHint && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-900/90 text-amber-100 px-4 py-2 rounded-full shadow-lg border border-amber-400 flex items-center gap-2 text-sm z-50 pointer-events-none">
+                  <span className="text-yellow-300">💡</span>
+                  <span>Note that none of these operations change the solutions!</span>
+                </div>
+              )}
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<GaussianGame />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Switches and truth</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  :root { color-scheme: light dark; --fs:1;
+    --bg:#fff; --panel:#fff; --box:#f4f5f6; --ink:#1a1a1a; --muted:#555;
+    --rule:#ccc; --accent:#eb811b; --live:#1a7f37; --lampon:#ffe08a;
+    --link:#2a5db0; --linkhover:#1e40af; --bar:#f7f7f7; --barline:#ddd;
+    --mp-blue:#2a6fb5; --mp-red:#c62828;
+    /* the wash on the one row of the truth table a proof has to rule out */
+    --chg:rgba(235,129,27,.16); }
+  /* The dark palette is listed twice on purpose: once for an explicit choice, once for the
+     system setting when no choice has been made (so it still works with JavaScript off). */
+  :root[data-theme="dark"] { color-scheme: dark;
+      --bg:#141c1e; --panel:#1b2528; --box:#222e31; --ink:#e7eced;
+      --muted:#9aa9ac; --rule:#2c393c;
+      --link:#7aa7e8; --linkhover:#a8c5f0; --bar:#1b2528; --barline:#2c393c;
+      --mp-blue:#8ab4e8; --mp-red:#f08a86; --live:#5fbf72; --lampon:#6b5a1f;
+      --chg:rgba(235,129,27,.16); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { color-scheme: dark;
+      --bg:#141c1e; --panel:#1b2528; --box:#222e31; --ink:#e7eced;
+      --muted:#9aa9ac; --rule:#2c393c;
+      --link:#7aa7e8; --linkhover:#a8c5f0; --bar:#1b2528; --barline:#2c393c;
+      --mp-blue:#8ab4e8; --mp-red:#f08a86; --live:#5fbf72; --lampon:#6b5a1f;
+      --chg:rgba(235,129,27,.16); } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:17px/1.65 Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: calc(17px * var(--fs));
+    padding: env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0); }
+  #top-bar { position:sticky; top:0; z-index:1003; box-sizing:border-box; height:44px;
+    display:flex; align-items:center; gap:10px; background:var(--bar);
+    border-bottom:1px solid var(--barline); padding:0 14px; }
+  #home-btn { display:inline-flex; align-items:center; gap:6px; background:var(--link);
+    color:#fff; border:none; border-radius:6px; padding:6px 13px; font-size:.82em;
+    cursor:pointer; text-decoration:none; white-space:nowrap; }
+  #home-btn:hover { background:var(--linkhover); color:#fff; text-decoration:none; }
+  #toc-btn { font:inherit; font-size:1.1em; line-height:1; padding:5px 10px;
+    border:1px solid var(--barline); border-radius:6px; background:var(--panel);
+    color:var(--ink); cursor:pointer; }
+  #toc-btn:hover { border-color:var(--link); color:var(--link); }
+  #toc-panel { position:fixed; top:44px; left:0; width:min(320px, 84vw);
+    height:calc(100vh - 44px); overflow-y:auto; overscroll-behavior:contain;
+    background:var(--bar); border-right:1px solid var(--barline);
+    padding:1rem 1.1rem 3rem; z-index:1002; font-size:.92rem;
+    transform:translateX(-102%); transition:transform .22s ease; }
+  #toc-panel.open { transform:translateX(0); }
+  #toc-panel .tp-head { margin:0 0 .6rem; font-weight:700; }
+  #toc-panel ol { margin:0; padding-left:1.35rem; }
+  #toc-panel li { margin:.18rem 0; }
+  #toc-panel a { color:inherit; text-decoration:none; display:block; padding:1px 0; }
+  #toc-panel a:hover { color:var(--link); text-decoration:underline; }
+  @media (prefers-reduced-motion: reduce) { #toc-panel { transition:none; } }
+  #bar-tools { margin-left:auto; display:flex; align-items:center; gap:6px; }
+  #bar-tools button { font:inherit; font-size:.82em; line-height:1; padding:6px 10px;
+    border:1px solid var(--barline); border-radius:6px; background:var(--panel);
+    color:var(--ink); cursor:pointer; }
+  #bar-tools button:hover { border-color:var(--link); color:var(--link); }
+  #bar-tools .fs-label { font-size:.74em; color:var(--muted); margin-right:2px; }
+  header { max-width:760px; margin:0 auto; padding:2.4rem 1.1rem 0; text-align:center; }
+  header .title { margin:0 0 .2em; font-size:2em; border-bottom:1px solid var(--rule);
+    padding-bottom:.3em; }
+  header .author { margin:.35rem 0 0; font-size:1.1em; color:var(--muted); }
+  main { max-width:760px; margin:0 auto; padding:1.6rem 1.1rem 5rem; }
+  a { color:var(--link); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  /* the sticky bar must not hide the heading an anchor jumps to */
+  h2[id], h3[id] { scroll-margin-top:56px; }
+  h2 { margin:2.4rem 0 .8rem; font-size:1.4em; padding-bottom:.3em;
+    border-bottom:1px solid var(--rule); }
+  h3 { margin:1.8rem 0 .5rem; font-size:1.2em; }
+  p, li { margin:.7rem 0; }
+  .accent { color:var(--accent); }
+  .box { background:var(--box); border-radius:8px; padding:1rem 1.15rem; margin:1.3rem 0; }
+  .box .label { display:block; font-weight:700; margin-bottom:.35rem;
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; font-size:.98rem; }
+  .q { background:var(--panel); border-left:3px solid var(--accent);
+    padding:.85rem 1.1rem; margin:1.3rem 0; border-radius:0 6px 6px 0; }
+  .scroll { overflow-x:auto; }
+  footer { max-width:760px; margin:0 auto; border-top:1px solid var(--rule);
+    padding:1.2rem 1.1rem 3rem; font-size:.84rem; color:var(--muted);
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .tiny { font-size:.78rem; color:var(--muted); }
+  .proof { margin:1.1rem 0 1.5rem; padding:.2rem 0 .2rem 1.05rem;
+    border-left:2px solid var(--rule); }
+  .proof > summary { font-style:italic; font-weight:700; cursor:pointer;
+    list-style:none; color:var(--ink); }
+  .proof > summary::-webkit-details-marker { display:none; }
+  .proof > summary::before { content:"\25B8"; display:inline-block;
+    margin-right:.5rem; color:var(--accent); transition:transform .15s ease; }
+  .proof[open] > summary::before { transform:rotate(90deg); }
+  .proof > summary:hover { color:var(--accent); }
+  .proof .qed { float:right; }
+  .numnote { margin:0 0 1.4rem; padding:.7rem .9rem; background:var(--box);
+    border-left:3px solid var(--accent); border-radius:0 4px 4px 0;
+    font-size:.88rem; color:var(--muted); }
+  .think { background:var(--panel); border:1px solid var(--rule);
+    border-left:4px solid var(--accent); border-radius:0 8px 8px 0;
+    padding:1rem 1.15rem; margin:1.8rem 0; }
+  .think .label { display:block; font-weight:700; color:var(--accent);
+    margin-bottom:.4rem; font-size:.98rem; letter-spacing:.02em;
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .think p { margin:0; }
+  /* Truth tables. The column of values is the whole point, so the entries are centred and the
+     row numbers sit outside the grid, in the muted colour, to be referred to from the text.
+     The row a proof has to rule out carries a wash rather than an outline: a box drawn round
+     it would read as marking the row off, when the point is that it is the row in play. */
+  table.tt { border-collapse:collapse; margin:1.3rem auto .4rem; font-size:.97rem;
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  table.tt th, table.tt td { border:1px solid var(--rule); padding:.36rem .72rem;
+    text-align:center; }
+  table.tt thead th { background:var(--box); font-weight:700; white-space:nowrap; }
+  table.tt th.n, table.tt td.n { border:none; color:var(--muted); font-size:.82em;
+    padding-right:.5rem; }
+  table.tt tbody tr.bad td { background:var(--chg); }
+  table.tt tbody tr.bad td.n { color:var(--accent); font-weight:700; background:none; }
+  table.tt td.T { color:var(--mp-blue); font-weight:600; }
+  table.tt td.F { color:var(--mp-red); font-weight:600; }
+  table.tt .sep { border-left:2px solid var(--muted); }
+  .widget { margin:1.8rem 0; background:var(--panel); border:1px solid var(--rule);
+    border-radius:10px; padding:1rem 1rem .8rem; }
+  .widget .hint { margin:.1rem 0 .8rem; font-size:.86rem; color:var(--muted);
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  /* Wide mode: one column, widened, for projecting the notes rather than reading them at a
+     desk. header, main and footer share the reading width, so all three move together. */
+  :root[data-wide="on"] header,
+  :root[data-wide="on"] main,
+  :root[data-wide="on"] footer { max-width:1180px; }
+  [hidden] { display:none !important; }
+
+  /* Circuits. A switch is a statement: closed means true. Green wire is carrying current, so
+     the lamp at the end is the truth value of the whole expression. */
+  .ckt { margin:.4rem 0 .2rem; }
+  .ckt svg { display:block; max-width:100%; height:auto; margin:0 auto; }
+  .ckt .wire { stroke:var(--rule); stroke-width:2.4; fill:none; stroke-linecap:round; }
+  .ckt .wire.live { stroke:var(--live); }
+  .ckt .term { fill:var(--muted); }
+  .ckt .blade { stroke:var(--muted); stroke-width:2.8; fill:none; stroke-linecap:round; }
+  .ckt .blade.live { stroke:var(--live); }
+  .ckt .nc { stroke:var(--ink); stroke-width:2; fill:none; stroke-linecap:round; }
+  .ckt .inv { stroke:var(--ink); stroke-width:1.8; fill:var(--panel); }
+  .ckt .encl { fill:none; stroke:var(--rule); stroke-width:1.2; stroke-dasharray:5 4; }
+  .ckt .lab { font:italic 16px Georgia, "Iowan Old Style", "Times New Roman", serif;
+    fill:var(--ink); }
+  .ckt .lamp { stroke:var(--muted); stroke-width:2; fill:var(--panel); }
+  .ckt .lamp.on { stroke:var(--accent); fill:var(--lampon); }
+  .ckt .lampx { stroke:var(--muted); stroke-width:1.6; fill:none; }
+  .ckt .lamp.on + .lampx, .ckt .lampx.on { stroke:var(--accent); }
+  .ckt .batt { stroke:var(--ink); stroke-width:2.6; fill:none; stroke-linecap:round; }
+  .pills { display:flex; justify-content:center; gap:.6rem; flex-wrap:wrap; margin:.2rem 0 .9rem; }
+  .pills button { font:inherit; font-size:.92rem; font-weight:600; padding:.4rem 1.1rem;
+    border:1.6px solid var(--rule); border-radius:999px; background:var(--panel);
+    color:var(--ink); cursor:pointer; }
+  .pills button:hover { border-color:var(--accent); color:var(--accent); }
+  .pills button[aria-pressed="true"] { border-color:var(--live); background:var(--live);
+    color:#fff; }
+  .pills button:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
+  .pills .act { font-weight:600; }
+  .pills .act[aria-pressed] { background:var(--panel); }
+  .ckt-head { text-align:center; margin:.1rem 0 .2rem; font-size:1.02rem; }
+  .ckt-head .as { display:block; font-size:.82rem; color:var(--muted); margin-top:.1rem; }
+  .trio { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); }
+  .trio .cell { text-align:center; }
+  .verdict { text-align:center; margin:.8rem 0 .2rem; font-size:1.05rem; font-weight:600;
+    min-height:2.6em; }
+  .verdict.yes { color:var(--live); }
+  .verdict.no { color:var(--mp-red); }
+  .verdict .why { display:block; font-weight:400; font-size:.88rem; color:var(--muted);
+    margin-top:.2rem; }
+  #eq-pick { display:flex; justify-content:center; margin:.2rem 0 1rem; }
+  #eq-pick select { font:inherit; font-size:.92rem; padding:.35rem .6rem; border-radius:6px;
+    border:1px solid var(--rule); background:var(--panel); color:var(--ink); max-width:100%; }
+  #eq-trace { margin:1rem auto .2rem; }
+  #eq-trace td.gap { border:none; }
+</style>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("la-theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+    var f = parseFloat(localStorage.getItem("la-fs"));
+    if (f) document.documentElement.style.setProperty("--fs", f);
+    if (localStorage.getItem("la-wide") === "on")
+      document.documentElement.setAttribute("data-wide", "on");
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+<div id="top-bar">
+  <a id="home-btn" href="../index.html">&#8962;&nbsp;Home</a>
+  <div id="bar-tools">
+    <span class="fs-label">Text size</span>
+    <button type="button" id="fs-dec" aria-label="Decrease text size">A&minus;</button>
+    <button type="button" id="fs-inc" aria-label="Increase text size">A+</button>
+    <button type="button" id="wide-btn" aria-pressed="false"
+            title="Widen the column, for projecting">Wide</button>
+    <button type="button" id="theme-btn" aria-pressed="false">Dark</button>
+  </div>
+</div>
+<header>
+  <h1 class="title">Switches and truth</h1>
+  <p class="author">Dr Farhad Babaee</p>
+</header>
+<main>
+
+<p class="numnote">Nothing on this page is numbered. The items here are not taken from a set of
+lecture notes, and a number that does not match the notes you are reading from is worse than no
+number at all.</p>
+
+<h2 id="a-switch-is-a-statement">A switch is a statement</h2>
+
+<p>In 1937 Claude Shannon noticed that the algebra of switching circuits and the algebra of
+true and false are the same algebra. The dictionary is short enough to give in one line. A
+switch is a statement. <span class="accent">Closed</span> means <em>true</em> and
+<span class="accent">open</span> means <em>false</em>, and the lamp at the end of the circuit
+lights exactly when the whole expression is true.</p>
+
+<p>That gives you three things to build with.</p>
+
+<ul>
+  <li><strong>$P \wedge Q$ is two switches in series.</strong> Current has to get through both,
+  so the lamp lights only when both are closed.</li>
+  <li><strong>$P \vee Q$ is two switches in parallel.</strong> Either branch will do, so the
+  lamp lights when at least one is closed.</li>
+  <li><strong>$\neg P$ is a <span class="accent">break contact</span>.</strong> This is the
+  piece people usually mean when they ask what negation looks like in a circuit: a contact
+  wired so that it conducts when the switch is <em>not</em> pressed. Electricians call it
+  <em>normally closed</em>; in logic gates the same idea is the <em>inverter</em>, drawn as a
+  triangle with a small bubble on its output. The bubble is the negation.</li>
+</ul>
+
+<div class="widget" id="w-prims">
+  <p class="hint">Throw the switches and watch the three lamps. The marked contact in the third
+  circuit is the break contact: it conducts when $P$ is off.</p>
+  <div class="pills" id="prim-sw"></div>
+  <div class="trio">
+    <div class="cell"><p class="ckt-head">P &and; Q</p><div class="ckt" id="c-and"></div></div>
+    <div class="cell"><p class="ckt-head">P &or; Q</p><div class="ckt" id="c-or"></div></div>
+    <div class="cell"><p class="ckt-head">&not;P</p><div class="ckt" id="c-not"></div></div>
+  </div>
+</div>
+
+<noscript>
+  <p class="numnote">The circuits on this page are drawn by script, so with JavaScript turned
+  off you will see the words but not the diagrams.</p>
+</noscript>
+
+<div class="think">
+  <span class="label">Food for thought</span>
+  <p>There is no switch for $\Rightarrow$. Implication has to be built out of the other three,
+  and the truth table says how: $P \Rightarrow Q$ is the same statement as $\neg P \vee Q$. So
+  the circuit for an implication is a break contact for $P$ in parallel with an ordinary
+  contact for $Q$. Watch for it below.</p>
+</div>
+
+<h2 id="are-two-statements-the-same">Are two statements the same?</h2>
+
+<p>Two statements are <em>logically equivalent</em> when they are true in exactly the same
+circumstances, which is to say that their truth tables agree row for row. In circuits that
+reads even more plainly: wire both up to the same switches, and ask whether the two lamps ever
+disagree.</p>
+
+<p>So here is a machine for settling it. Pick a pair of statements, and the checker walks
+through every combination of the switches in turn. If it ever finds a combination where one
+lamp is on and the other is off, it stops there and reports that the two are
+<span class="accent">not equivalent</span>, with the combination that separates them. If it
+gets through all of them with the lamps always agreeing, they are
+<span class="accent">equivalent</span>.</p>
+
+<div class="widget" id="w-eq">
+  <div id="eq-pick">
+    <label>
+      <span class="tiny">Compare&nbsp;</span>
+      <select id="eq-sel" aria-label="Choose a pair of statements to compare"></select>
+    </label>
+  </div>
+  <div class="pills" id="eq-sw"></div>
+  <p class="ckt-head" id="eq-h1"></p>
+  <div class="ckt" id="eq-c1"></div>
+  <p class="ckt-head" id="eq-h2"></p>
+  <div class="ckt" id="eq-c2"></div>
+  <div class="pills">
+    <button type="button" class="act" id="eq-run">Check all combinations</button>
+    <button type="button" class="act" id="eq-step">Step</button>
+    <button type="button" class="act" id="eq-reset">Reset</button>
+  </div>
+  <div class="scroll"><table class="tt" id="eq-trace"></table></div>
+  <p class="verdict" id="eq-verdict"></p>
+</div>
+
+<p>Three of the pairs in that list are worth sitting with. The contrapositive
+$\neg Q \Rightarrow \neg P$ agrees with $P \Rightarrow Q$ on every row, which is why you are
+allowed to prove either one in place of the other. The converse-negation
+$\neg P \Rightarrow \neg Q$ does not, and the checker stops on the row that separates them.
+And De Morgan's laws turn a series pair into a parallel pair the moment you negate it, which is
+exactly what the two circuits show.</p>
+
+<div class="think">
+  <span class="label">Food for thought</span>
+  <p>The checker stops at the first disagreement, so a verdict of
+  <em>not equivalent</em> arrives after one row, while <em>equivalent</em> needs all of them.
+  That asymmetry is not an accident of the program. Refuting a universal claim takes one
+  counterexample; establishing it takes every case. With two switches there are four cases, with
+  three there are eight, and with $n$ there are $2^{n}$, which is why checking cases stops being
+  a proof strategy almost immediately.</p>
+</div>
+
+</main>
+
+<footer>
+  Notes material is copyright of the University of Bristol. Educational use only.
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var save = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+
+  // ---- dark mode ----
+  var btn = document.getElementById("theme-btn");
+  function dark() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function paint() {
+    var d = dark();
+    btn.textContent = d ? "Light" : "Dark";
+    btn.setAttribute("aria-pressed", d ? "true" : "false");
+    btn.setAttribute("aria-label", d ? "Switch to light mode" : "Switch to dark mode");
+  }
+  btn.addEventListener("click", function () {
+    var next = dark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    save("la-theme", next);
+    paint();
+  });
+  paint();
+
+  // ---- text size ----
+  var MIN = 0.85, MAX = 1.6, STEP = 0.15;
+  function fs() { return parseFloat(getComputedStyle(root).getPropertyValue("--fs")) || 1; }
+  function setFs(v) {
+    v = Math.min(MAX, Math.max(MIN, Math.round(v * 100) / 100));
+    root.style.setProperty("--fs", v);
+    save("la-fs", v);
+    document.getElementById("fs-dec").disabled = v <= MIN;
+    document.getElementById("fs-inc").disabled = v >= MAX;
+  }
+  // ---- wide mode ----
+  // Width is an attribute on the root, like the theme, so the head script can restore it before
+  // the first paint and the page does not visibly reflow on load.
+  var wbtn = document.getElementById("wide-btn");
+  function paintWide() {
+    var on = root.getAttribute("data-wide") === "on";
+    wbtn.setAttribute("aria-pressed", on ? "true" : "false");
+    wbtn.textContent = on ? "Narrow" : "Wide";
+    wbtn.title = on ? "Back to the reading width" : "Widen the column, for projecting";
+  }
+  wbtn.addEventListener("click", function () {
+    var on = root.getAttribute("data-wide") === "on";
+    if (on) root.removeAttribute("data-wide"); else root.setAttribute("data-wide", "on");
+    save("la-wide", on ? "off" : "on");
+    paintWide();
+  });
+  paintWide();
+
+  document.getElementById("fs-dec").addEventListener("click", function () { setFs(fs() - STEP); });
+  document.getElementById("fs-inc").addEventListener("click", function () { setFs(fs() + STEP); });
+  setFs(fs());
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var UW = 78, UH = 50;
+
+  function el(n, a) {
+    var e = document.createElementNS(NS, n);
+    for (var k in a) if (a[k] !== null && a[k] !== undefined) e.setAttribute(k, a[k]);
+    return e;
+  }
+  function txt(parent, cls, x, y, s) {
+    var t = el("text", {"class": cls, x: x, y: y, "text-anchor": "middle"});
+    t.textContent = s; parent.appendChild(t); return t;
+  }
+
+  // ---- expressions ----
+  function V(n) { return {t: "var", n: n}; }
+  function N(a) { return {t: "not", a: a}; }
+  function AND() { return {t: "and", xs: [].slice.call(arguments)}; }
+  function OR() { return {t: "or", xs: [].slice.call(arguments)}; }
+  function IMP(a, b) { return {t: "imp", a: a, b: b}; }
+
+  function ev(e, env) {
+    if (e.t === "var") return !!env[e.n];
+    if (e.t === "not") return !ev(e.a, env);
+    if (e.t === "and") return e.xs.every(function (x) { return ev(x, env); });
+    if (e.t === "or")  return e.xs.some(function (x) { return ev(x, env); });
+    return !ev(e.a, env) || ev(e.b, env);          // imp
+  }
+  function prec(e) {
+    return e.t === "var" ? 5 : e.t === "not" ? 4 : e.t === "and" ? 3 : e.t === "or" ? 2 : 1;
+  }
+  function show(e) {
+    function sub(x, p) { var s = show(x); return prec(x) < p ? "(" + s + ")" : s; }
+    if (e.t === "var") return e.n;
+    if (e.t === "not") return "¬" + sub(e.a, 4);
+    if (e.t === "and") return e.xs.map(function (x) { return sub(x, 3); }).join(" ∧ ");
+    if (e.t === "or")  return e.xs.map(function (x) { return sub(x, 2); }).join(" ∨ ");
+    return sub(e.a, 3) + " ⇒ " + sub(e.b, 2);
+  }
+  function not1(e) { return e.t === "not" ? e.a : N(e); }
+  // A circuit has no arrow. An implication is drawn as the parallel pair it already is.
+  function toCircuit(e) {
+    if (e.t === "imp") return OR(not1(toCircuit(e.a)), toCircuit(e.b));
+    if (e.t === "not") return not1(toCircuit(e.a));
+    if (e.t === "and") return {t: "and", xs: e.xs.map(toCircuit)};
+    if (e.t === "or")  return {t: "or",  xs: e.xs.map(toCircuit)};
+    return e;
+  }
+
+  // ---- layout, in grid cells: series adds widths, parallel adds heights ----
+  function measure(e) {
+    var w, h;
+    if (e.t === "var" || (e.t === "not" && e.a.t === "var")) return {w: 1, h: 1};
+    if (e.t === "not") { var c = measure(e.a); return {w: c.w + 1, h: c.h}; }
+    if (e.t === "and") {
+      w = 0; h = 0;
+      e.xs.forEach(function (x) { var m = measure(x); w += m.w; h = Math.max(h, m.h); });
+      return {w: w, h: h};
+    }
+    w = 0; h = 0;
+    e.xs.forEach(function (x) { var m = measure(x); w = Math.max(w, m.w); h += m.h; });
+    return {w: w, h: h};
+  }
+
+  function draw(e, g, x, y, w, h, env) {
+    var py = y + h * UH / 2;
+    var on = ev(e, env);
+    var wc = on ? "wire live" : "wire";
+
+    if (e.t === "var" || (e.t === "not" && e.a.t === "var")) {
+      var name = e.t === "var" ? e.n : "¬" + e.a.n;
+      var cx = x + w * UW / 2;
+      g.appendChild(el("path", {"class": wc, d: "M" + x + " " + py + " H" + (cx - 17)}));
+      g.appendChild(el("path", {"class": wc, d: "M" + (cx + 17) + " " + py + " H" + (x + w * UW)}));
+      g.appendChild(el("circle", {"class": "term", cx: cx - 17, cy: py, r: 3}));
+      g.appendChild(el("circle", {"class": "term", cx: cx + 17, cy: py, r: 3}));
+      // the blade lies on both terminals when the contact conducts, and lifts when it does not
+      g.appendChild(el("path", {
+        "class": on ? "blade live" : "blade",
+        d: on ? "M" + (cx - 17) + " " + py + " L" + (cx + 17) + " " + py
+              : "M" + (cx - 17) + " " + py + " L" + (cx + 13) + " " + (py - 16)
+      }));
+      if (e.t === "not")   // the bar that marks a break contact
+        g.appendChild(el("path", {"class": "nc",
+          d: "M" + (cx + 10) + " " + (py - 9) + " L" + (cx + 10) + " " + (py + 9)}));
+      txt(g, "lab", cx, py - 26, name);
+      return;
+    }
+    if (e.t === "and") {
+      var cx2 = x;
+      e.xs.forEach(function (ch) {
+        var m = measure(ch);
+        draw(ch, g, cx2, y, m.w, h, env);
+        cx2 += m.w * UW;
+      });
+      return;
+    }
+    if (e.t === "or") {
+      var cy = y, ports = [];
+      e.xs.forEach(function (ch) {
+        var m = measure(ch);
+        draw(ch, g, x, cy, w, m.h, env);
+        ports.push(cy + m.h * UH / 2);
+        cy += m.h * UH;
+      });
+      var top = Math.min.apply(null, ports), bot = Math.max.apply(null, ports);
+      g.appendChild(el("path", {"class": wc, d: "M" + x + " " + top + " V" + bot}));
+      g.appendChild(el("path", {"class": wc, d: "M" + (x + w * UW) + " " + top + " V" + bot}));
+      return;
+    }
+    // negation of a whole sub-network: it drives a relay, and we take the relay's break
+    // contact. Drawn the way gate diagrams draw it, as a triangle with a bubble.
+    var m2 = measure(e.a);
+    draw(e.a, g, x, y, m2.w, h, env);
+    var x0 = x + m2.w * UW, x1 = x + w * UW;
+    g.appendChild(el("rect", {"class": "encl", x: x - 7, y: y + 3,
+      width: m2.w * UW + 14, height: h * UH - 6, rx: 8}));
+    g.appendChild(el("path", {"class": wc, d: "M" + x0 + " " + py + " H" + (x0 + 12)}));
+    g.appendChild(el("path", {"class": wc, d: "M" + (x1 - 6) + " " + py + " H" + x1}));
+    g.appendChild(el("path", {"class": "inv",
+      d: "M" + (x0 + 12) + " " + (py - 14) + " L" + (x0 + 12) + " " + (py + 14) +
+         " L" + (x1 - 16) + " " + py + " Z"}));
+    g.appendChild(el("circle", {"class": "inv", cx: x1 - 11, cy: py, r: 5}));
+  }
+
+  // ---- the frame: battery on the left, network across the top, lamp on the right ----
+  function circuit(expr, env, label) {
+    var e = toCircuit(expr), m = measure(e);
+    var NX = 62, NY = 24, NW = m.w * UW, NH = m.h * UH;
+    var py = NY + NH / 2;
+    var lampX = NX + NW + 56, rightX = lampX + 40, botY = NY + NH + 44;
+    var by = (py + botY) / 2;
+    var lit = ev(e, env);
+    var wc = lit ? "wire live" : "wire";
+    var VW = rightX + 24, VH = botY + 22;
+    // width and height as well as the viewBox: without them the circuit stretches to the
+    // column and its labels scale with it, so two circuits side by side disagree about type size
+    var svg = el("svg", {viewBox: "0 0 " + VW + " " + VH, width: VW, height: VH,
+      role: "img", "aria-label": label + ": the lamp is " + (lit ? "on" : "off")});
+    svg.appendChild(el("path", {"class": wc, d: "M30 " + py + " H" + NX}));
+    var g = el("g", {}); svg.appendChild(g);
+    draw(e, g, NX, NY, m.w, m.h, env);
+    svg.appendChild(el("path", {"class": wc,
+      d: "M" + (NX + NW) + " " + py + " H" + (lampX - 18)}));
+    svg.appendChild(el("circle", {"class": lit ? "lamp on" : "lamp", cx: lampX, cy: py, r: 18}));
+    svg.appendChild(el("path", {"class": lit ? "lampx on" : "lampx",
+      d: "M" + (lampX - 12) + " " + (py - 12) + " L" + (lampX + 12) + " " + (py + 12) +
+         " M" + (lampX + 12) + " " + (py - 12) + " L" + (lampX - 12) + " " + (py + 12)}));
+    svg.appendChild(el("path", {"class": wc,
+      d: "M" + (lampX + 18) + " " + py + " H" + rightX + " V" + botY + " H30"}));
+    svg.appendChild(el("path", {"class": wc, d: "M30 " + py + " V" + (by - 7)}));
+    svg.appendChild(el("path", {"class": wc, d: "M30 " + (by + 5) + " V" + botY}));
+    svg.appendChild(el("path", {"class": "batt", d: "M16 " + (by - 7) + " H44"}));
+    svg.appendChild(el("path", {"class": "batt", d: "M23 " + (by + 5) + " H37"}));
+    return svg;
+  }
+
+  function put(id, expr, env, label) {
+    var host = document.getElementById(id);
+    if (!host) return;
+    host.textContent = "";
+    host.appendChild(circuit(expr, env, label));
+  }
+  function switches(host, names, env, onchange) {
+    host.textContent = "";
+    names.forEach(function (n) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("data-sw", n);
+      b.addEventListener("click", function () { env[n] = !env[n]; onchange(); });
+      host.appendChild(b);
+    });
+  }
+  function paintSwitches(host, env) {
+    [].forEach.call(host.querySelectorAll("button[data-sw]"), function (b) {
+      var n = b.getAttribute("data-sw"), on = !!env[n];
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.textContent = n + (on ? " closed" : " open");
+    });
+  }
+
+  // ======== the three primitives ========
+  (function () {
+    var host = document.getElementById("prim-sw");
+    if (!host) return;
+    var env = {P: true, Q: false};
+    function paint() {
+      paintSwitches(host, env);
+      put("c-and", AND(V("P"), V("Q")), env, "P and Q in series");
+      put("c-or",  OR(V("P"), V("Q")),  env, "P and Q in parallel");
+      put("c-not", N(V("P")),           env, "a break contact for P");
+    }
+    switches(host, ["P", "Q"], env, paint);
+    paint();
+  })();
+
+  // ======== the equivalence checker ========
+  (function () {
+    var sel = document.getElementById("eq-sel");
+    if (!sel) return;
+    var PAIRS = [
+      {a: IMP(V("P"), V("Q")), b: OR(N(V("P")), V("Q")),
+       note: "the implication, and what it unfolds to"},
+      {a: IMP(V("P"), V("Q")), b: IMP(N(V("Q")), N(V("P"))),
+       note: "a statement and its contrapositive"},
+      {a: IMP(V("P"), V("Q")), b: IMP(N(V("P")), N(V("Q"))),
+       note: "a statement and the usual mistake"},
+      {a: N(AND(V("P"), V("Q"))), b: OR(N(V("P")), N(V("Q"))),
+       note: "De Morgan, first law"},
+      {a: N(OR(V("P"), V("Q"))), b: AND(N(V("P")), N(V("Q"))),
+       note: "De Morgan, second law"},
+      {a: N(AND(V("P"), V("Q"))), b: AND(N(V("P")), N(V("Q"))),
+       note: "De Morgan, misremembered"}
+    ];
+    PAIRS.forEach(function (p, i) {
+      var o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = show(p.a) + "   against   " + show(p.b);
+      sel.appendChild(o);
+    });
+
+    var ROWS = [{P: true, Q: true}, {P: true, Q: false},
+                {P: false, Q: true}, {P: false, Q: false}];
+    var pair = PAIRS[0], env = {P: true, Q: true}, at = -1, timer = null;
+    // once the walk has settled the question there is nothing left to look at, so
+    // further steps do nothing: a counterexample ends the search
+    var done = false;
+    var swHost = document.getElementById("eq-sw");
+    var trace = document.getElementById("eq-trace");
+    var verdict = document.getElementById("eq-verdict");
+
+    function cell(v) { return '<td class="' + (v ? "T" : "F") + '">' + (v ? "T" : "F") + "</td>"; }
+
+    function head(id, e) {
+      var h = document.getElementById(id), drawn = show(toCircuit(e));
+      h.textContent = show(e);
+      if (drawn !== h.textContent) {
+        var sp = document.createElement("span");
+        sp.className = "as"; sp.textContent = "drawn as " + drawn;
+        h.appendChild(sp);
+      }
+    }
+    function paint() {
+      paintSwitches(swHost, env);
+      head("eq-h1", pair.a);
+      head("eq-h2", pair.b);
+      put("eq-c1", pair.a, env, show(pair.a));
+      put("eq-c2", pair.b, env, show(pair.b));
+    }
+    function header() {
+      trace.innerHTML = "<thead><tr><th>P</th><th>Q</th><th>lamp 1</th><th>lamp 2</th>" +
+        "<th>agree?</th></tr></thead><tbody></tbody>";
+    }
+    function reset() {
+      stop(); at = -1; done = false; header();
+      verdict.textContent = ""; verdict.className = "verdict";
+      env.P = true; env.Q = true; paint();
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    // one row of the walk; returns true when the walk is over
+    function step() {
+      if (done) return true;
+      if (at >= ROWS.length - 1) { finish(); return true; }
+      at += 1;
+      var r = ROWS[at];
+      env.P = r.P; env.Q = r.Q;
+      paint();
+      var v1 = ev(pair.a, env), v2 = ev(pair.b, env);
+      var tr = document.createElement("tr");
+      tr.innerHTML = cell(r.P) + cell(r.Q) + cell(v1) + cell(v2) +
+        '<td class="' + (v1 === v2 ? "T" : "F") + '">' + (v1 === v2 ? "yes" : "no") + "</td>";
+      if (v1 !== v2) tr.className = "bad";
+      trace.querySelector("tbody").appendChild(tr);
+      if (v1 !== v2) {
+        stop(); done = true;
+        verdict.className = "verdict no";
+        verdict.innerHTML = "Not equivalent." +
+          '<span class="why">With P ' + (r.P ? "closed" : "open") + " and Q " +
+          (r.Q ? "closed" : "open") + ", one lamp is on and the other is off. " +
+          "One row is enough, so the check stops here.</span>";
+        return true;
+      }
+      if (at === ROWS.length - 1) { finish(); return true; }
+      return false;
+    }
+    function finish() {
+      stop(); done = true;
+      if (verdict.className.indexOf("no") >= 0) return;
+      verdict.className = "verdict yes";
+      verdict.innerHTML = "Equivalent." +
+        '<span class="why">The lamps agreed on all ' + ROWS.length +
+        " combinations, so the two statements are true in exactly the same circumstances.</span>";
+    }
+    function run() {
+      reset();
+      timer = setInterval(function () { if (step()) stop(); }, 850);
+    }
+
+    sel.addEventListener("change", function () { pair = PAIRS[+sel.value]; reset(); });
+    document.getElementById("eq-run").addEventListener("click", run);
+    document.getElementById("eq-step").addEventListener("click", function () { stop(); step(); });
+    document.getElementById("eq-reset").addEventListener("click", reset);
+    switches(swHost, ["P", "Q"], env, function () { stop(); paint(); });
+    reset();
+  })();
+})();
+</script>
+
+</body>
+</html>

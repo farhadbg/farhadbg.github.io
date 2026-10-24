@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manifolds: Tangent Spaces</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax for LaTeX Rendering -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; touch-action: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #ui-container { position: absolute; top: 0; left: 0; z-index: 10; pointer-events: none; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; box-sizing: border-box; }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            pointer-events: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Slider Styling */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #fbbf24; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #475569; border-radius: 2px; }
+
+        button { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .shape-btn:hover:not(.active) { background-color: rgba(255, 255, 255, 0.1); }
+        .shape-btn.active { background-color: #ef4444; color: white; border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+
+        /* Toggle Info Animation */
+        #info-content { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; overflow: hidden; }
+
+        /* Collapsible panels */
+        .coords-body, .ctrl-body { transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; max-height: 400px; opacity: 1; overflow: hidden; }
+        .collapsed .coords-body, .collapsed .ctrl-body { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+        .collapsed .coords-chev, .collapsed .ctrl-chev { transform: rotate(180deg); }
+
+        /* Monospace font for coordinates */
+        .coord-val { font-family: 'Courier New', Courier, monospace; font-weight: bold; display: inline-block; width: 50px; text-align: right;}
+    </style>
+    <script src="diagram-scroll.js"></script>
+</head>
+<body>
+    <div id="ui-container">
+        <!-- Top Info Panel -->
+        <div class="flex gap-4 items-start max-w-4xl">
+            <div class="glass-panel p-6 flex-1">
+                <div class="flex justify-between items-center cursor-pointer select-none" id="info-toggle-btn">
+                    <h1 class="text-3xl font-bold mb-0 flex items-center gap-3">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 22h20L12 2z"></path></svg>
+                        Tangent Spaces
+                    </h1>
+                    <svg id="info-chevron" class="w-6 h-6 transform transition-transform text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                </div>
+                <div id="info-content" class="mt-4" style="max-height: 300px; opacity: 1;">
+                    <p class="text-slate-300 text-sm leading-relaxed text-amber-300 font-medium">
+                        &#x1F449; Click and drag the red point to move the tangent space across the manifold.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Live Coordinates Panel (collapsible) -->
+            <div class="glass-panel w-72 shrink-0 overflow-hidden" id="coords-panel">
+                <div class="flex justify-between items-center cursor-pointer select-none p-4 pb-2" onclick="document.getElementById('coords-panel').classList.toggle('collapsed')">
+                    <h2 class="text-xs font-bold tracking-wider text-slate-400 uppercase m-0">Live Coordinates</h2>
+                    <svg class="w-4 h-4 text-slate-500 transition-transform coords-chev" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                </div>
+                <div class="coords-body px-4 pb-4">
+                <div class="mb-3">
+                    <div class="text-red-400 font-medium text-xs mb-1 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> Point $p$
+                    </div>
+                    <div class="text-xs text-slate-300 bg-slate-800/50 p-1.5 rounded border border-slate-700">
+                        ( <span class="coord-val text-white" id="val-px">0.00</span> ,
+                          <span class="coord-val text-white" id="val-py">0.00</span> ,
+                          <span class="coord-val text-white" id="val-pz">0.00</span> )
+                    </div>
+                </div>
+                <div>
+                    <div class="text-amber-400 font-medium text-xs mb-1 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-amber-400 inline-block" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span> $\hat{n} = \nabla F / |\nabla F|$
+                    </div>
+                    <div class="text-xs text-slate-300 bg-slate-800/50 p-1.5 rounded border border-slate-700">
+                        [ <span class="coord-val text-white" id="val-nx">0.00</span> ,
+                          <span class="coord-val text-white" id="val-ny">0.00</span> ,
+                          <span class="coord-val text-white" id="val-nz">0.00</span> ]
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls Panel (collapsible) -->
+        <div class="glass-panel max-w-2xl mx-auto w-full overflow-hidden" id="controls-panel">
+            <div class="flex justify-between items-center cursor-pointer select-none p-4 pb-2" onclick="document.getElementById('controls-panel').classList.toggle('collapsed')">
+                <span class="text-xs font-bold tracking-wider text-slate-400 uppercase m-0">Controls</span>
+                <svg class="w-4 h-4 text-slate-500 transition-transform ctrl-chev" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+            </div>
+            <div class="ctrl-body px-5 pb-5 flex flex-col gap-4">
+            <!-- Shape Selector -->
+            <div>
+                <label class="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Manifold</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="btn-sphere" class="shape-btn active py-1.5 px-2 rounded-lg border border-slate-600 text-sm font-medium">Sphere</button>
+                    <button id="btn-torus" class="shape-btn py-1.5 px-2 rounded-lg border border-slate-600 text-sm font-medium">Torus</button>
+                    <button id="btn-saddle" class="shape-btn py-1.5 px-2 rounded-lg border border-slate-600 text-sm font-medium">Saddle</button>
+                </div>
+            </div>
+            <!-- Zoom Slider -->
+            <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                <input type="range" id="zoom-slider" min="0" max="1" step="0.001" value="0">
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls, clock;
+        let currentMesh;
+        let targetZoom = 0, currentZoom = 0;
+        let orbitPos = new THREE.Vector3(0, 5, 12);
+        let orbitTarget = new THREE.Vector3(0, 0, 0);
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+
+        const shaderUniforms = {
+            chartInvA: { value: new THREE.Matrix4() },
+            colorA: { value: new THREE.Color(0xef4444) },
+            chartSize: { value: 1.0 }
+        };
+
+        class TangentSpace {
+            constructor(colorHex) {
+                this.point = new THREE.Vector3();
+                this.normal = new THREE.Vector3(0, 1, 0);
+                this.color = colorHex;
+                this.group = new THREE.Group();
+
+                const planeGeo = new THREE.PlaneGeometry(2, 2);
+                const planeMat = new THREE.MeshBasicMaterial({ color: this.color, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
+                this.plane = new THREE.Mesh(planeGeo, planeMat);
+                this.group.add(this.plane);
+
+                this.grid = new THREE.GridHelper(2, 10, this.color, 0xffffff);
+                this.grid.material.transparent = true;
+                this.grid.material.opacity = 0.6;
+                this.grid.rotation.x = Math.PI / 2;
+                this.group.add(this.grid);
+
+                const markerGeo = new THREE.SphereGeometry(0.08, 16, 16);
+                const markerMat = new THREE.MeshBasicMaterial({ color: this.color });
+                this.marker = new THREE.Mesh(markerGeo, markerMat);
+                this.group.add(this.marker);
+
+                // "x" label at the intersection point
+                const xCanvas = document.createElement('canvas');
+                xCanvas.width = 128; xCanvas.height = 128;
+                const xCtx = xCanvas.getContext('2d');
+                xCtx.clearRect(0, 0, 128, 128);
+                xCtx.fillStyle = '#ef4444';
+                xCtx.font = 'italic bold 80px "Times New Roman", serif';
+                xCtx.textBaseline = 'middle';
+                xCtx.textAlign = 'center';
+                xCtx.fillText('x', 64, 64);
+                const xTex = new THREE.CanvasTexture(xCanvas);
+                const xMat = new THREE.SpriteMaterial({ map: xTex, transparent: true, depthTest: false });
+                this.xLabel = new THREE.Sprite(xMat);
+                this.xLabel.scale.set(0.4, 0.4, 1);
+                this.xLabel.position.set(0.25, 0.25, 0);
+                this.group.add(this.xLabel);
+
+                this.arrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 1.5, 0xfbbf24, 0.3, 0.2);
+                this.group.add(this.arrow);
+
+                // ∇f label sprite next to the arrow tip
+                const labelCanvas = document.createElement('canvas');
+                labelCanvas.width = 256; labelCanvas.height = 128;
+                const ctx = labelCanvas.getContext('2d');
+                ctx.clearRect(0, 0, 256, 128);
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = 'bold 72px "Times New Roman", serif';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('∇f', 20, 64);
+                const labelTex = new THREE.CanvasTexture(labelCanvas);
+                const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
+                this.label = new THREE.Sprite(labelMat);
+                this.label.scale.set(0.8, 0.4, 1);
+                this.label.position.set(0.45, 0, 1.55);
+                this.group.add(this.label);
+
+                // TₓM label at corner of tangent plane
+                const tCanvas = document.createElement('canvas');
+                tCanvas.width = 256; tCanvas.height = 128;
+                const tCtx = tCanvas.getContext('2d');
+                tCtx.clearRect(0, 0, 256, 128);
+                tCtx.fillStyle = '#ef4444';
+                tCtx.font = 'italic bold 60px "Times New Roman", serif';
+                tCtx.textBaseline = 'middle';
+                tCtx.fillText('T', 10, 50);
+                tCtx.font = 'italic bold 40px "Times New Roman", serif';
+                tCtx.fillText('p', 48, 70);
+                tCtx.font = 'italic bold 60px "Times New Roman", serif';
+                tCtx.fillText('M', 75, 50);
+                const tTex = new THREE.CanvasTexture(tCanvas);
+                const tMat = new THREE.SpriteMaterial({ map: tTex, transparent: true, depthTest: false });
+                this.txmLabel = new THREE.Sprite(tMat);
+                this.txmLabel.scale.set(0.9, 0.45, 1);
+                this.txmLabel.position.set(1.1, 1.1, 0);
+                this.group.add(this.txmLabel);
+
+                scene.add(this.group);
+
+                this.points2D = [];
+                const steps = 4;
+                for(let i=0; i<=steps; i++) {
+                    for(let j=0; j<=steps; j++) {
+                        if (i === 0 || i === steps || j === 0 || j === steps || (i===2 && j===2)) {
+                            this.points2D.push([ -1 + (i * 2/steps), -1 + (j * 2/steps) ]);
+                        }
+                    }
+                }
+                const lineMat = new THREE.LineDashedMaterial({ color: this.color, transparent: true, opacity: 0.5, dashSize: 0.08, gapSize: 0.08 });
+                const lineGeo = new THREE.BufferGeometry();
+                const linePos = new Float32Array(this.points2D.length * 2 * 3);
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+                this.mappingLines = new THREE.LineSegments(lineGeo, lineMat);
+                scene.add(this.mappingLines);
+            }
+
+            updatePosition(point, normal, manifoldMesh) {
+                this.point.copy(point);
+                this.normal.copy(normal);
+                this.group.position.copy(this.point).add(this.normal.clone().multiplyScalar(0.01));
+                this.group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.normal);
+                this.group.updateMatrixWorld(true);
+                if (manifoldMesh) this.updateMappings(manifoldMesh);
+
+                document.getElementById('val-px').innerText = point.x.toFixed(2);
+                document.getElementById('val-py').innerText = point.y.toFixed(2);
+                document.getElementById('val-pz').innerText = point.z.toFixed(2);
+                document.getElementById('val-nx').innerText = normal.x.toFixed(2);
+                document.getElementById('val-ny').innerText = normal.y.toFixed(2);
+                document.getElementById('val-nz').innerText = normal.z.toFixed(2);
+            }
+
+            updateMappings(manifoldMesh) {
+                if (!manifoldMesh) return;
+                const positions = this.mappingLines.geometry.attributes.position.array;
+                let idx = 0;
+                const localRaycaster = new THREE.Raycaster();
+                const localDir = new THREE.Vector3(0, 0, -1);
+                const worldDir = localDir.clone().transformDirection(this.group.matrixWorld).normalize();
+
+                for (let p of this.points2D) {
+                    const localStart = new THREE.Vector3(p[0], p[1], 0);
+                    const worldStart = localStart.clone().applyMatrix4(this.group.matrixWorld);
+                    const rayOrigin = localStart.clone().setZ(1.0).applyMatrix4(this.group.matrixWorld);
+                    localRaycaster.set(rayOrigin, worldDir);
+                    const intersects = localRaycaster.intersectObject(manifoldMesh);
+                    let worldEnd = (intersects.length > 0 && intersects[0].distance < 2.5) ? intersects[0].point : worldStart;
+                    positions[idx++] = worldStart.x; positions[idx++] = worldStart.y; positions[idx++] = worldStart.z;
+                    positions[idx++] = worldEnd.x; positions[idx++] = worldEnd.y; positions[idx++] = worldEnd.z;
+                }
+                this.mappingLines.geometry.attributes.position.needsUpdate = true;
+                this.mappingLines.computeLineDistances();
+            }
+
+            setOpacity(planeOpacity, gridOpacity) {
+                this.plane.material.opacity = planeOpacity;
+                this.grid.material.opacity = gridOpacity;
+                this.mappingLines.material.opacity = planeOpacity * 1.5;
+            }
+        }
+
+        let activeChart;
+
+        init();
+        animateWhileVisible(renderer.domElement, animate);
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.02);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100);
+            camera.position.copy(orbitPos);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = false;
+            zoomOnlyOnGesture(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight1.position.set(10, 15, 10);
+            dirLight1.castShadow = true;
+            dirLight1.shadow.mapSize.width = 1024;
+            dirLight1.shadow.mapSize.height = 1024;
+            dirLight1.shadow.camera.near = 0.5;
+            dirLight1.shadow.camera.far = 50;
+            const d = 10;
+            dirLight1.shadow.camera.left = -d; dirLight1.shadow.camera.right = d;
+            dirLight1.shadow.camera.top = d; dirLight1.shadow.camera.bottom = -d;
+            dirLight1.shadow.bias = -0.001;
+            scene.add(dirLight1);
+            const dirLight2 = new THREE.DirectionalLight(0xaabbff, 0.5);
+            dirLight2.position.set(-10, -10, -10);
+            scene.add(dirLight2);
+
+            clock = new THREE.Clock();
+            activeChart = new TangentSpace(0xef4444);
+            loadShape('sphere');
+
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('zoom-slider').addEventListener('input', (e) => { targetZoom = parseFloat(e.target.value); });
+
+            document.querySelectorAll('.shape-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    loadShape(e.target.id.split('-')[1]);
+                    targetZoom = 0;
+                    document.getElementById('zoom-slider').value = 0;
+                });
+            });
+
+            const canvasEl = renderer.domElement;
+            canvasEl.addEventListener('pointerdown', onPointerDown);
+            canvasEl.addEventListener('pointermove', onPointerMove);
+            canvasEl.addEventListener('pointerup', onPointerUp);
+            canvasEl.addEventListener('pointerleave', onPointerUp);
+
+            const infoToggleBtn = document.getElementById('info-toggle-btn');
+            const infoContent = document.getElementById('info-content');
+            const infoChevron = document.getElementById('info-chevron');
+            let infoOpen = true;
+            infoToggleBtn.addEventListener('click', () => {
+                infoOpen = !infoOpen;
+                infoContent.style.maxHeight = infoOpen ? '300px' : '0px';
+                infoContent.style.opacity = infoOpen ? '1' : '0';
+                infoChevron.style.transform = infoOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+            });
+        }
+
+        function getIntersects(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            return raycaster.intersectObject(currentMesh);
+        }
+        function onPointerDown(event) { if (currentZoom > 0.1) return; const i = getIntersects(event); if (i.length > 0) { isDragging = true; controls.enabled = false; updateChartPosition(i[0]); } }
+        function onPointerMove(event) { if (!isDragging || currentZoom > 0.1) return; const i = getIntersects(event); if (i.length > 0) updateChartPosition(i[0]); }
+        function onPointerUp() { isDragging = false; if (currentZoom === 0) controls.enabled = true; }
+
+        function updateChartPosition(hit) {
+            const normalMatrix = new THREE.Matrix3().getNormalMatrix(currentMesh.matrixWorld);
+            const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+            activeChart.updatePosition(hit.point, worldNormal, currentMesh);
+        }
+
+        function createManifoldTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#475569'; ctx.fillRect(0, 0, 1024, 1024);
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 4;
+            const step = 1024 / 32;
+            for(let i=0; i<=32; i++) { let p = i*step; ctx.beginPath(); ctx.moveTo(p,0); ctx.lineTo(p,1024); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,p); ctx.lineTo(1024,p); ctx.stroke(); }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return tex;
+        }
+
+        function loadShape(type) {
+            if(currentMesh) scene.remove(currentMesh);
+            let geometry, idxA;
+            switch(type) {
+                case 'sphere': geometry = new THREE.SphereGeometry(3, 128, 128); idxA = 32*129+32; break;
+                case 'torus': geometry = new THREE.TorusGeometry(2.5, 1.2, 128, 128); idxA = 32*129+64; break;
+                case 'saddle':
+                    geometry = new THREE.PlaneGeometry(8, 8, 128, 128);
+                    geometry.rotateX(-Math.PI / 2);
+                    const pos = geometry.attributes.position;
+                    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), z = pos.getZ(i); pos.setY(i, (x*x - z*z) * 0.12); }
+                    geometry.computeVertexNormals();
+                    idxA = 32*129+32; break;
+            }
+            geometry.computeVertexNormals();
+            const material = new THREE.MeshStandardMaterial({ map: createManifoldTexture(), roughness: 0.7, metalness: 0.1, side: THREE.DoubleSide });
+            material.onBeforeCompile = (shader) => {
+                shader.uniforms.chartInvA = shaderUniforms.chartInvA;
+                shader.uniforms.colorA = shaderUniforms.colorA;
+                shader.uniforms.chartSize = shaderUniforms.chartSize;
+                shader.vertexShader = `varying vec3 vWorldPosition;\n${shader.vertexShader}`.replace(`#include <worldpos_vertex>`, `#include <worldpos_vertex>\nvWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;`);
+                shader.fragmentShader = `varying vec3 vWorldPosition;\nuniform mat4 chartInvA;\nuniform vec3 colorA;\nuniform float chartSize;\nfloat getHighlight(mat4 invMat, vec3 worldPos, out float grid) {\n  vec4 localPos = invMat * vec4(worldPos, 1.0);\n  vec2 dist = abs(localPos.xy);\n  float depth = abs(localPos.z);\n  grid = 0.0;\n  if (dist.x <= chartSize && dist.y <= chartSize && depth < 1.5) {\n    float edge = max(dist.x, dist.y);\n    float area = smoothstep(chartSize, chartSize - 0.05, edge);\n    vec2 g = fract(localPos.xy * 5.0);\n    float lineThick = 0.08;\n    float lines = step(1.0 - lineThick, g.x) + step(g.x, lineThick) + step(1.0 - lineThick, g.y) + step(g.y, lineThick);\n    grid = clamp(lines, 0.0, 1.0) * area;\n    return area;\n  }\n  return 0.0;\n}\n${shader.fragmentShader}`.replace(`vec4 diffuseColor = vec4( diffuse, opacity );`, `vec4 diffuseColor = vec4( diffuse, opacity );\nfloat gridA = 0.0;\nfloat mixA = getHighlight(chartInvA, vWorldPosition, gridA);\nif (mixA > 0.0) {\n  diffuseColor.rgb = mix(diffuseColor.rgb, colorA, mixA * 0.45);\n  diffuseColor.rgb += colorA * gridA * 0.5;\n}`);
+            };
+            currentMesh = new THREE.Mesh(geometry, material);
+            currentMesh.castShadow = true; currentMesh.receiveShadow = true;
+            scene.add(currentMesh);
+            currentMesh.updateMatrixWorld(true);
+            const pt = new THREE.Vector3().fromBufferAttribute(geometry.attributes.position, idxA);
+            const nrm = new THREE.Vector3().fromBufferAttribute(geometry.attributes.normal, idxA).normalize();
+            activeChart.updatePosition(pt, nrm, currentMesh);
+        }
+
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+
+        function animate() {
+            // Capped: the loop pauses while off screen, and the first frame back would
+            // otherwise see the whole pause as one step and overshoot the zoom.
+            const delta = Math.min(clock.getDelta(), 0.1);
+            if (activeChart) { activeChart.group.updateMatrixWorld(); shaderUniforms.chartInvA.value.copy(activeChart.group.matrixWorld).invert(); }
+            currentZoom += (targetZoom - currentZoom) * 8 * delta;
+            if (Math.abs(targetZoom - currentZoom) < 0.005) currentZoom = targetZoom;
+
+            if (currentZoom === 0 && !isDragging) {
+                controls.enabled = true; controls.update();
+                orbitPos.copy(camera.position); orbitTarget.copy(controls.target);
+                camera.up.set(0, 1, 0);
+                activeChart.setOpacity(0.3, 0.6);
+            } else if (currentZoom > 0) {
+                controls.enabled = false;
+                let t = currentZoom < 0.5 ? 2*currentZoom*currentZoom : -1+(4-2*currentZoom)*currentZoom;
+                const localCamPos = activeChart.point.clone().add(activeChart.normal.clone().multiplyScalar(0.5));
+                camera.position.lerpVectors(orbitPos, localCamPos, t);
+                controls.target.lerpVectors(orbitTarget, activeChart.point, t);
+                const defaultUp = new THREE.Vector3(0, 1, 0);
+                const chartUp = new THREE.Vector3(0, 1, 0).applyQuaternion(activeChart.group.quaternion).normalize();
+                camera.up.lerpVectors(defaultUp, chartUp, t).normalize();
+                camera.lookAt(controls.target);
+                activeChart.setOpacity(0.3 + (0.3 * t), 0.6 + (0.4 * t));
+            }
+            if (activeChart && activeChart.arrow) activeChart.arrow.scale.setScalar(1 - (currentZoom * 0.7));
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

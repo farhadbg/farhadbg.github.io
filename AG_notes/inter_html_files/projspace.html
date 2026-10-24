@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projective Space Models</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333333;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #cccccc;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            max-width: 320px;
+            backdrop-filter: blur(4px);
+        }
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 15px 0;
+            color: #0055cc;
+            font-weight: 600;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+        }
+        select:focus {
+            border-color: #0055cc;
+        }
+        .instructions {
+            font-size: 0.85rem;
+            color: #555555;
+            line-height: 1.5;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dddddd;
+        }
+        .highlight {
+            color: #d73a49;
+            font-weight: bold;
+        }
+        .action {
+            color: #0055cc;
+            font-weight: bold;
+        }
+    </style>
+    <!-- Import Three.js -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script src="diagram-scroll.js"></script>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h1>Projective Space P²</h1>
+
+        <div class="control-group">
+            <label for="model-select">Visualization Model</label>
+            <select id="model-select">
+                <option value="sphere-line">1. Sphere & Line Model</option>
+                <option value="half-sphere">2. Half-Sphere (Boundary) Model</option>
+                <option value="symmetric-region">3. Symmetric Region (Cone) Model</option>
+            </select>
+        </div>
+
+        <div id="instructions" class="instructions">
+            <strong>Controls:</strong><br>
+            • <strong>Drag the sphere</strong> to move the line and the <span class="highlight">intersection points</span>.<br>
+            • <strong>Drag the background</strong> to rotate the camera.<br>
+            • <strong>Ctrl/⌘ + scroll</strong> to zoom.
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Core Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf4f4f4);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(5, 4, 6);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        zoomOnlyOnGesture(renderer.domElement);
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(10, 10, 10);
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0xe0e0e0, 1);
+        fillLight.position.set(-10, -10, -10);
+        scene.add(fillLight);
+
+        // --- Shared Constants ---
+        const SPHERE_RADIUS = 1.2;
+        const currentModelGroup = new THREE.Group();
+        scene.add(currentModelGroup);
+
+        let currentModelType = 'sphere-line';
+
+        // --- Geometries ---
+        const fullSphereGeo = new THREE.SphereGeometry(SPHERE_RADIUS, 64, 64);
+        const halfSphereGeo = new THREE.SphereGeometry(SPHERE_RADIUS, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        const fullWireframeGeo = new THREE.EdgesGeometry(new THREE.SphereGeometry(SPHERE_RADIUS, 16, 16));
+        const halfWireframeGeo = new THREE.EdgesGeometry(new THREE.SphereGeometry(SPHERE_RADIUS, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2));
+
+        // 1. Transparent Main Sphere
+        const sphereMat = new THREE.MeshPhysicalMaterial({
+            color: 0x0066ff,
+            transparent: true,
+            opacity: 0.15,
+            roughness: 0.2,
+            metalness: 0.1,
+            clearcoat: 1.0,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const mainSphere = new THREE.Mesh(fullSphereGeo, sphereMat);
+        currentModelGroup.add(mainSphere);
+
+        // Wireframe
+        const wireframeMat = new THREE.LineBasicMaterial({ color: 0x0033aa, transparent: true, opacity: 0.4 });
+        const wireframe = new THREE.LineSegments(fullWireframeGeo, wireframeMat);
+        currentModelGroup.add(wireframe);
+
+        // Equator Ring (for Half-Sphere)
+        const equatorCurve = new THREE.EllipseCurve(0, 0, SPHERE_RADIUS, SPHERE_RADIUS, 0, 2 * Math.PI, false, 0);
+        const equatorGeo = new THREE.BufferGeometry().setFromPoints(equatorCurve.getPoints(128));
+        equatorGeo.rotateX(Math.PI / 2);
+
+        const equatorMat = new THREE.LineDashedMaterial({
+            color: 0x222222, transparent: true, opacity: 0.8, dashSize: 0.08, gapSize: 0.06
+        });
+        const equatorRing = new THREE.LineLoop(equatorGeo, equatorMat);
+        equatorRing.computeLineDistances();
+        equatorRing.visible = false;
+        currentModelGroup.add(equatorRing);
+
+        // 2. The Line & Intersection Points (Models 1 & 2)
+        const lineGroup = new THREE.Group();
+        currentModelGroup.add(lineGroup);
+
+        const lineLength = SPHERE_RADIUS * 5.0;
+        const lineGeo = new THREE.CylinderGeometry(0.04, 0.04, lineLength, 16);
+        lineGeo.rotateX(Math.PI / 2);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+        const lineMesh = new THREE.Mesh(lineGeo, lineMat);
+        lineGroup.add(lineMesh);
+
+        const pointGeo = new THREE.SphereGeometry(0.12, 32, 32);
+        const pointMat1 = new THREE.MeshStandardMaterial({ color: 0xe3000f, emissive: 0xaa0000, emissiveIntensity: 0.2, roughness: 0.2 });
+        const pointMat2 = new THREE.MeshStandardMaterial({ color: 0x009900, emissive: 0x006600, emissiveIntensity: 0.2, roughness: 0.2 });
+        const p1 = new THREE.Mesh(pointGeo, pointMat1);
+        const p2 = new THREE.Mesh(pointGeo, pointMat2);
+        lineGroup.add(p1);
+        lineGroup.add(p2);
+
+        // 3. Symmetric Region & Cone (Model 3)
+        const regionGroup = new THREE.Group();
+        currentModelGroup.add(regionGroup);
+        regionGroup.visible = false;
+
+        const regionAlpha = 0.35; // Size of the circular patch (~20 degrees)
+
+        // Spherical Caps (Top and Bottom patches)
+        const capGeo1 = new THREE.SphereGeometry(SPHERE_RADIUS + 0.005, 32, 16, 0, Math.PI * 2, 0, regionAlpha);
+        const capGeo2 = new THREE.SphereGeometry(SPHERE_RADIUS + 0.005, 32, 16, 0, Math.PI * 2, Math.PI - regionAlpha, regionAlpha);
+        const capMat = new THREE.MeshStandardMaterial({
+            color: 0xff8800, emissive: 0xaa4400, emissiveIntensity: 0.2, roughness: 0.3, side: THREE.DoubleSide
+        });
+        const cap1 = new THREE.Mesh(capGeo1, capMat);
+        const cap2 = new THREE.Mesh(capGeo2, capMat);
+        regionGroup.add(cap1);
+        regionGroup.add(cap2);
+
+        // The Cone
+        const coneGroup = new THREE.Group();
+        regionGroup.add(coneGroup);
+        coneGroup.visible = false; // Hidden initially, shown on click
+
+        const coneHeight = SPHERE_RADIUS * 1.5;
+        const coneRadius = coneHeight * Math.tan(regionAlpha);
+
+        // Top Cone (Apex at origin, extending upwards)
+        const cone1Geo = new THREE.CylinderGeometry(coneRadius, 0, coneHeight, 32, 1, false);
+        cone1Geo.translate(0, coneHeight / 2, 0); // Move apex to 0,0,0
+        // Bottom Cone (Apex at origin, extending downwards)
+        const cone2Geo = new THREE.CylinderGeometry(0, coneRadius, coneHeight, 32, 1, false);
+        cone2Geo.translate(0, -coneHeight / 2, 0); // Move apex to 0,0,0
+
+        const coneMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffaa00, transparent: true, opacity: 0.35, roughness: 0.1, side: THREE.DoubleSide, depthWrite: false
+        });
+        const cone1Mesh = new THREE.Mesh(cone1Geo, coneMat);
+        const cone2Mesh = new THREE.Mesh(cone2Geo, coneMat);
+        coneGroup.add(cone1Mesh);
+        coneGroup.add(cone2Mesh);
+
+        // --- State vectors ---
+        const directionVector = new THREE.Vector3(0, 1, 1).normalize();
+
+        // Function to update geometry orientation based on the shared directionVector
+        function updateGeometryOrientations() {
+            const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), directionVector);
+
+            // Update line group
+            lineMesh.quaternion.copy(targetQuaternion);
+            p1.position.copy(directionVector).multiplyScalar(SPHERE_RADIUS);
+            p2.position.copy(directionVector).multiplyScalar(-SPHERE_RADIUS);
+
+            // Update region group (its default 'forward' is Y-axis since spheres poles are on Y)
+            const regionQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), directionVector);
+            regionGroup.quaternion.copy(regionQuaternion);
+        }
+
+        updateGeometryOrientations();
+
+        // --- UI Updates ---
+        function updateInstructions() {
+            const inst = document.getElementById('instructions');
+            if (currentModelType === 'sphere-line') {
+                inst.innerHTML = `
+                    <strong>Controls:</strong><br>
+                    • <strong>Drag the sphere</strong> to move the line and the <span class="highlight">intersection points</span>.<br>
+                    • <strong>Drag the background</strong> to rotate the camera.<br>
+                    • <strong>Ctrl/⌘ + scroll</strong> to zoom.
+                `;
+            } else if (currentModelType === 'half-sphere') {
+                inst.innerHTML = `
+                    <strong>Controls:</strong><br>
+                    • <strong>Drag the sphere</strong> to move the line along the boundary.<br>
+                    • <strong>Drag the background</strong> to rotate the camera.
+                `;
+            } else if (currentModelType === 'symmetric-region') {
+                inst.innerHTML = `
+                    <strong>Controls:</strong><br>
+                    • <span class="action">Click the colored region</span> to toggle the affine cone over it.<br>
+                    • <strong>Drag the sphere</strong> to move the region.<br>
+                    • <strong>Drag the background</strong> to rotate the camera.
+                `;
+            }
+        }
+
+        // --- Model Selection Logic ---
+        document.getElementById('model-select').addEventListener('change', (event) => {
+            currentModelType = event.target.value;
+
+            if (currentModelType === 'half-sphere') {
+                mainSphere.geometry = halfSphereGeo;
+                wireframe.geometry = halfWireframeGeo;
+                equatorRing.visible = true;
+                lineGroup.visible = true;
+                regionGroup.visible = false;
+
+                // Constrain existing direction to boundary
+                directionVector.y = 0;
+                if (directionVector.lengthSq() < 0.001) directionVector.set(1, 0, 0);
+                directionVector.normalize();
+
+            } else if (currentModelType === 'symmetric-region') {
+                mainSphere.geometry = fullSphereGeo;
+                wireframe.geometry = fullWireframeGeo;
+                equatorRing.visible = false;
+                lineGroup.visible = false;
+                regionGroup.visible = true;
+
+            } else { // sphere-line
+                mainSphere.geometry = fullSphereGeo;
+                wireframe.geometry = fullWireframeGeo;
+                equatorRing.visible = false;
+                lineGroup.visible = true;
+                regionGroup.visible = false;
+            }
+
+            updateGeometryOrientations();
+            updateInstructions();
+        });
+
+        // --- Interaction Logic (Dragging & Clicking) ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const mouseDownPos = new THREE.Vector2();
+        let isDragging = false;
+        let dragHitObject = null;
+        const dragPlane = new THREE.Plane();
+
+        container.addEventListener('pointerdown', (event) => {
+            mouseDownPos.set(event.clientX, event.clientY);
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // Determine which objects are clickable in the current mode
+            let interactableObjects = [];
+            if (currentModelType === 'symmetric-region') {
+                interactableObjects = [mainSphere, cap1, cap2];
+            } else {
+                interactableObjects = [mainSphere, p1, p2];
+            }
+
+            const intersects = raycaster.intersectObjects(interactableObjects);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                controls.enabled = false;
+                dragHitObject = intersects[0].object;
+
+                const hitPoint = intersects[0].point.clone();
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), hitPoint);
+
+                // If it's the half-sphere, constrain immediately
+                if (currentModelType === 'half-sphere') {
+                    hitPoint.y = 0;
+                    if (hitPoint.lengthSq() < 0.001) hitPoint.set(1, 0, 0);
+                }
+
+                directionVector.copy(hitPoint).normalize();
+                updateGeometryOrientations();
+            }
+        });
+
+        window.addEventListener('pointermove', (event) => {
+            if (!isDragging) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const targetPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(dragPlane, targetPoint);
+
+            if (targetPoint) {
+                if (currentModelType === 'half-sphere') {
+                    targetPoint.y = 0;
+                    if (targetPoint.lengthSq() < 0.001) targetPoint.set(1, 0, 0);
+                }
+
+                directionVector.copy(targetPoint).normalize();
+                updateGeometryOrientations();
+            }
+        });
+
+        window.addEventListener('pointerup', (event) => {
+            if (isDragging) {
+                // Check if the interaction was a click (distance moved is very small)
+                const dist = mouseDownPos.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
+                if (dist < 5) { // 5 pixel threshold
+                    if (currentModelType === 'symmetric-region' && (dragHitObject === cap1 || dragHitObject === cap2)) {
+                        coneGroup.visible = !coneGroup.visible; // Toggle cone visibility
+                    }
+                }
+            }
+
+            isDragging = false;
+            dragHitObject = null;
+            controls.enabled = true;
+        });
+
+        // --- Animation Loop ---
+        function animate() {
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Window Resize ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animateWhileVisible(renderer.domElement, animate);
+    </script>
+</body>
+</html>

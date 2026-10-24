@@ -1,0 +1,1791 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Introduction to Pure Mathematics &mdash; implication, proof and light switches</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  :root { color-scheme: light dark; --fs:1;
+    --bg:#fff; --panel:#fff; --box:#f4f5f6; --ink:#1a1a1a; --muted:#555;
+    --rule:#ccc; --accent:#eb811b; --selbg:rgba(42,111,181,.15);
+    --live:#1a7f37; --lampon:#ffe08a;
+    --link:#2a5db0; --linkhover:#1e40af; --bar:#f7f7f7; --barline:#ddd;
+    --mp-blue:#2a6fb5; --mp-red:#c62828;
+    /* the wash on the one row of the truth table a proof has to rule out */
+    --chg:rgba(235,129,27,.16); }
+  /* The dark palette is listed twice on purpose: once for an explicit choice, once for the
+     system setting when no choice has been made (so it still works with JavaScript off). */
+  :root[data-theme="dark"] { color-scheme: dark;
+      --bg:#141c1e; --panel:#1b2528; --box:#222e31; --ink:#e7eced;
+      --muted:#9aa9ac; --rule:#2c393c;
+      --link:#7aa7e8; --linkhover:#a8c5f0; --bar:#1b2528; --barline:#2c393c;
+      --mp-blue:#8ab4e8; --mp-red:#f08a86; --selbg:rgba(138,180,232,.20);
+      --live:#5fbf72; --lampon:#6b5a1f;
+      --chg:rgba(235,129,27,.16); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { color-scheme: dark;
+      --bg:#141c1e; --panel:#1b2528; --box:#222e31; --ink:#e7eced;
+      --muted:#9aa9ac; --rule:#2c393c;
+      --link:#7aa7e8; --linkhover:#a8c5f0; --bar:#1b2528; --barline:#2c393c;
+      --mp-blue:#8ab4e8; --mp-red:#f08a86; --selbg:rgba(138,180,232,.20);
+      --live:#5fbf72; --lampon:#6b5a1f;
+      --chg:rgba(235,129,27,.16); } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:17px/1.65 Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: calc(17px * var(--fs));
+    padding: env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0); }
+  #top-bar { position:sticky; top:0; z-index:1003; box-sizing:border-box; height:44px;
+    display:flex; align-items:center; gap:10px; background:var(--bar);
+    border-bottom:1px solid var(--barline); padding:0 14px; }
+  #home-btn { display:inline-flex; align-items:center; gap:6px; background:var(--link);
+    color:#fff; border:none; border-radius:6px; padding:6px 13px; font-size:.82em;
+    cursor:pointer; text-decoration:none; white-space:nowrap; }
+  #home-btn:hover { background:var(--linkhover); color:#fff; text-decoration:none; }
+  #toc-btn { font:inherit; font-size:1.1em; line-height:1; padding:5px 10px;
+    border:1px solid var(--barline); border-radius:6px; background:var(--panel);
+    color:var(--ink); cursor:pointer; }
+  #toc-btn:hover { border-color:var(--link); color:var(--link); }
+  #toc-panel { position:fixed; top:44px; left:0; width:min(320px, 84vw);
+    height:calc(100vh - 44px); overflow-y:auto; overscroll-behavior:contain;
+    background:var(--bar); border-right:1px solid var(--barline);
+    padding:1rem 1.1rem 3rem; z-index:1002; font-size:.92rem;
+    transform:translateX(-102%); transition:transform .22s ease; }
+  #toc-panel.open { transform:translateX(0); }
+  #toc-panel .tp-head { margin:0 0 .6rem; font-weight:700; }
+  #toc-panel ol { margin:0; padding-left:1.35rem; }
+  #toc-panel li { margin:.18rem 0; }
+  #toc-panel a { color:inherit; text-decoration:none; display:block; padding:1px 0; }
+  #toc-panel a:hover { color:var(--link); text-decoration:underline; }
+  @media (prefers-reduced-motion: reduce) { #toc-panel { transition:none; } }
+  #bar-tools { margin-left:auto; display:flex; align-items:center; gap:6px; }
+  #bar-tools button { font:inherit; font-size:.82em; line-height:1; padding:6px 10px;
+    border:1px solid var(--barline); border-radius:6px; background:var(--panel);
+    color:var(--ink); cursor:pointer; }
+  #bar-tools button:hover { border-color:var(--link); color:var(--link); }
+  #bar-tools .fs-label { font-size:.74em; color:var(--muted); margin-right:2px; }
+  /* Phones: the bar keeps contents, home, text size and theme; the label and Wide, which is for
+     projecting, go, so that the bar is no wider than the screen. */
+  @media (max-width:420px) { #bar-tools .fs-label, #wide-btn { display:none; } }
+  header { max-width:760px; margin:0 auto; padding:2.4rem 1.1rem 0; text-align:center; }
+  header .title { margin:0 0 .2em; font-size:2em; border-bottom:1px solid var(--rule);
+    padding-bottom:.3em; }
+  header .author { margin:.35rem 0 0; font-size:1.1em; color:var(--muted); }
+  main { max-width:760px; margin:0 auto; padding:1.6rem 1.1rem 5rem; }
+  a { color:var(--link); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  /* the sticky bar must not hide the heading an anchor jumps to */
+  h2[id], h3[id], .think[id] { scroll-margin-top:56px; }
+  h2 { margin:2.4rem 0 .8rem; font-size:1.4em; padding-bottom:.3em;
+    border-bottom:1px solid var(--rule); }
+  h3 { margin:1.8rem 0 .5rem; font-size:1.2em; }
+  p, li { margin:.7rem 0; }
+  .accent { color:var(--accent); }
+  .box { background:var(--box); border-radius:8px; padding:1rem 1.15rem; margin:1.3rem 0; }
+  .box .label { display:block; font-weight:700; margin-bottom:.35rem;
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; font-size:.98rem; }
+  .q { background:var(--panel); border-left:3px solid var(--accent);
+    padding:.85rem 1.1rem; margin:1.3rem 0; border-radius:0 6px 6px 0; }
+  .scroll { overflow-x:auto; }
+  /* Display maths on a phone: the long lines are broken by hand into aligned rows, as in the
+     simpler version; anything still too wide scrolls inside its own line rather than pushing the
+     whole page sideways. */
+  mjx-container[display="true"] { overflow-x:auto; overflow-y:hidden; max-width:100%; padding:2px 0; }
+  footer { max-width:760px; margin:0 auto; border-top:1px solid var(--rule);
+    padding:1.2rem 1.1rem 3rem; font-size:.84rem; color:var(--muted);
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .tiny { font-size:.78rem; color:var(--muted); }
+  .proof { margin:1.1rem 0 1.5rem; padding:.2rem 0 .2rem 1.05rem;
+    border-left:2px solid var(--rule); }
+  .proof > summary { font-style:italic; font-weight:700; cursor:pointer;
+    list-style:none; color:var(--ink); }
+  .proof > summary::-webkit-details-marker { display:none; }
+  .proof > summary::before { content:"\25B8"; display:inline-block;
+    margin-right:.5rem; color:var(--accent); transition:transform .15s ease; }
+  .proof[open] > summary::before { transform:rotate(90deg); }
+  .proof > summary:hover { color:var(--accent); }
+  .proof .qed { float:right; }
+  .numnote { margin:0 0 1.4rem; padding:.7rem .9rem; background:var(--box);
+    border-left:3px solid var(--accent); border-radius:0 4px 4px 0;
+    font-size:.88rem; color:var(--muted); }
+  .think { background:var(--panel); border:1px solid var(--rule);
+    border-left:4px solid var(--accent); border-radius:0 8px 8px 0;
+    padding:1rem 1.15rem; margin:1.8rem 0; }
+  .think .label { display:block; font-weight:700; color:var(--accent);
+    margin-bottom:.4rem; font-size:.98rem; letter-spacing:.02em;
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .think p { margin:0; }
+  .think p + p { margin-top:.6rem; }
+  .think .pills { margin-top:.8rem; }
+  /* Truth tables. The column of values is the whole point, so the entries are centred and the
+     row numbers sit outside the grid, in the muted colour, to be referred to from the text.
+     The row a proof has to rule out carries a wash rather than an outline: a box drawn round
+     it would read as marking the row off, when the point is that it is the row in play. */
+  table.tt { border-collapse:collapse; margin:1.3rem auto .4rem; font-size:.97rem;
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  table.tt th, table.tt td { border:1px solid var(--rule); padding:.36rem .72rem;
+    text-align:center; }
+  table.tt thead th { background:var(--box); font-weight:700; white-space:nowrap; }
+  table.tt th.n, table.tt td.n { border:none; color:var(--muted); font-size:.82em;
+    padding-right:.5rem; }
+  table.tt tbody tr.bad td { background:var(--chg); }
+  table.tt tbody tr.bad td.n { color:var(--accent); font-weight:700; background:none; }
+  table.tt td.T { color:var(--mp-blue); font-weight:600; }
+  table.tt td.F { color:var(--mp-red); font-weight:600; }
+  table.tt .sep { border-left:2px solid var(--muted); }
+  .tcap { text-align:center; margin:.2rem 0 1.4rem; font-size:.85rem; color:var(--muted);
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  /* Venn diagrams. Hand-written inline SVG that paints from the custom properties, so the
+     figures follow the theme. The script-drawn figures in the lecture notes cannot do this,
+     which is why they need a white panel forced behind them in dark mode; these do not. */
+  .venn svg { display:block; width:100%; height:auto; max-width:430px; margin:0 auto; }
+  .venn .u { fill:none; stroke:var(--rule); stroke-width:1.5; }
+  .venn .sa { fill:var(--accent); fill-opacity:.13; stroke:var(--accent); stroke-width:2; }
+  .venn .sb { fill:var(--mp-blue); fill-opacity:.10; stroke:var(--mp-blue); stroke-width:2; }
+  .venn .dash { stroke-dasharray:6 4; }
+  /* the region a proof has to empty, in the same red the false entries of the table use */
+  .venn .bad { fill:var(--mp-red); fill-opacity:.20; }
+  .venn .lab { font:italic 19px Georgia, "Iowan Old Style", "Times New Roman", serif;
+    fill:var(--ink); }
+  .venn .sup { font-style:normal; font-size:12px; }
+  .venn .note { font:13px Georgia, "Iowan Old Style", "Times New Roman", serif;
+    fill:var(--muted); }
+  .venn .dot { fill:var(--ink); }
+  /* the contradiction figure: a tether to where the supposed counterexample would have to
+     sit, and the cross saying it cannot sit there */
+  .venn .tether { stroke:var(--muted); stroke-width:1.2; stroke-dasharray:5 4; fill:none; }
+  .venn .xmark { stroke:var(--mp-red); stroke-width:2.5; fill:none; stroke-linecap:round; }
+  /* The rows of the implication table are buttons: each one opens the paragraph that says
+     what that line of the table is claiming. */
+  /* the compound headings of the opening table are buttons: each one draws its own picture.
+     The cell keeps the role and the keyboard focus; the face inside it is what looks pressable,
+     raised until it is chosen and then filled in the accent. */
+  table.tt th.pick { cursor:pointer; padding:.3rem .4rem; }
+  table.tt th.pick .btn { display:inline-block; padding:.22rem .7rem; border:1px solid var(--accent);
+    border-radius:6px; background:var(--panel); color:var(--ink);
+    box-shadow:0 1px 0 var(--rule), 0 2px 4px rgba(0,0,0,.10);
+    transition:background .12s, color .12s, box-shadow .12s; }
+  table.tt th.pick:hover .btn { background:var(--selbg); color:var(--accent); }
+  table.tt th.pick[aria-pressed="true"] { background:var(--selbg); }
+  table.tt th.pick[aria-pressed="true"] .btn { background:var(--accent); color:#fff;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.25); }
+  table.tt th.pick:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
+  table.tt tbody td.oncol { background:var(--selbg); }
+  /* a shaded region made of two overlapping circles: the opacity goes on the group, or the
+     circles double up where they meet and the overlap reads as a third region */
+  .venn g.shade { fill:var(--mp-red); opacity:.20; }
+  table.tt tbody tr[data-row] { cursor:pointer; }
+  /* proof by contradiction rings the three entries a true implication allows, leaving the
+     one it forbids plainly alone */
+  table.tt tbody td[data-imp].hot { box-shadow:inset 0 0 0 2px var(--mp-blue); }
+  /* A called-out row gets its own wash, a rule top and bottom, and a pointer beside its
+     number. The faint border-colour change this replaces was invisible next to the shaded
+     false row, which is louder than it. */
+  table.tt tbody tr[data-row].sel td { background:var(--selbg);
+    border-top:2px solid var(--accent); border-bottom:2px solid var(--accent); }
+  table.tt tbody tr[data-row].sel td.n { background:none; border:none;
+    color:var(--accent); font-weight:700; }
+  table.tt tbody tr[data-row].sel td.n::before { content:"\25B8"; margin-right:.12em; }
+  table.tt tbody tr[data-row]:focus-visible { outline:2px solid var(--link);
+    outline-offset:-2px; }
+  .rowexp { margin:.2rem 0 1.6rem; padding:.9rem 1.05rem; background:var(--box);
+    border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
+  .rowexp .prompt { margin:0; font-size:.9rem; color:var(--muted); }
+  .rowexp .rl { margin:0 0 .55rem; font-weight:700; font-size:1rem; }
+  .rowexp ol.rowlist { margin:.3rem 0 0; padding-left:1.5rem; }
+  .rowexp ol.rowlist li { margin:.35rem 0; }
+  .rowexp ol.rowlist.named { list-style:none; padding-left:0; }
+  .rowexp .cols { display:flex; gap:1.2rem; align-items:center; flex-wrap:wrap; }
+  .rowexp .txt { flex:1 1 250px; min-width:0; }
+  .rowexp .txt p { margin:.45rem 0; }
+  .rowexp .txt p:first-child { margin-top:0; }
+  .rowexp .fig { flex:0 0 auto; margin:0 auto; }
+  /* the figure is given its natural size rather than stretched, so its labels keep the same
+     type size as the rest of the panel */
+  .rowfig svg { display:block; width:268px; max-width:100%; height:auto; margin:0 auto; }
+  .rowfig figcaption { margin-top:.3rem; font-size:.78rem; color:var(--muted); text-align:center; }
+  /* phones: the table has eight columns, so it has to give up padding before it gives up
+     being readable, and the panel stacks instead of sitting side by side */
+  .widget { margin:1.8rem 0; background:var(--panel); border:1px solid var(--rule);
+    border-radius:10px; padding:1rem 1rem .8rem; }
+  .widget .hint { margin:.1rem 0 .8rem; font-size:.86rem; color:var(--muted);
+    font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .widget .modes { display:flex; justify-content:center; gap:.6rem; flex-wrap:wrap;
+    margin:.2rem 0 .9rem; }
+  .widget .modes button { font:inherit; font-size:.92rem; font-weight:600;
+    padding:.4rem 1.1rem; border:1.6px solid var(--rule); border-radius:999px;
+    background:var(--panel); color:var(--ink); cursor:pointer; }
+  .widget .modes button:hover { border-color:var(--accent); color:var(--accent); }
+  .widget .modes button[aria-pressed="true"] { border-color:var(--accent);
+    background:var(--accent); color:#1a1a1a; }
+  .widget .modes button:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
+  /* the three captions are all in the markup, so the box is sized for the longest of them and
+     the page does not jump as the reader switches method */
+  .widget .cap { margin:.9rem 0 .1rem; min-height:3.6em; text-align:center; }
+  .widget .cap p { margin:0; }
+  /* worked examples sit outside the caption, which is centred and too narrow for display
+     mathematics */
+  #w-ex { text-align:left; }
+  #w-ex .box { margin:1rem 0 .2rem; }
+  /* Dominoes. A domino turns about the corner it stands on, so its top sweeps a distance
+     equal to its own height. That distance is the reach, and the script compares it against
+     each gap rather than taking the two rows on trust. */
+  .domrow { margin:1rem 0 1.2rem; }
+  .domrow figcaption { margin:.4rem 0 0; font-size:.85rem; color:var(--muted);
+    text-align:center; font-family:Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  svg.dom { display:block; width:100%; max-width:430px; height:auto; margin:0 auto; }
+  svg.dom .floor { stroke:var(--rule); stroke-width:2; fill:none; }
+  /* The turn is set as an SVG transform attribute from script rather than as a CSS
+     transform: transform-box and transform-origin on an SVG rect are not carried everywhere,
+     and a domino that silently fails to turn is worse than one that turns plainly. */
+  svg.dom polygon { fill:var(--accent); stroke:var(--ink); stroke-width:1.1;
+    stroke-linejoin:round; }
+  svg.dom polygon.down { fill:var(--muted); }
+  svg.dom .dlab { font:13px Georgia, "Iowan Old Style", "Times New Roman", serif;
+    fill:var(--muted); }
+  /* Wide mode: one column, widened, for projecting the notes rather than reading them at a
+     desk. header, main and footer share the reading width, so all three move together. */
+  :root[data-wide="on"] header,
+  :root[data-wide="on"] main,
+  :root[data-wide="on"] footer { max-width:1180px; }
+  [hidden] { display:none !important; }
+  /* Phones. Eight columns of one letter each will fit a 360px screen, but only if the table
+     gives up padding and the box around it gives up most of its own: measured, the table needs
+     about 290px there, against roughly 307px of usable width. */
+  @media (max-width:560px) {
+    .widget { padding:.7rem .5rem .6rem; }
+    table.tt { font-size:.78rem; }
+    table.tt th, table.tt td { padding:.26rem .28rem; }
+    table.tt th.n, table.tt td.n { padding:.26rem .22rem .26rem 0; font-size:.76em; }
+    table.tt thead th { font-size:.95em; }
+    .rowexp { padding:.75rem .7rem; }
+    .widget .modes { gap:.4rem; }
+    .widget .modes button { padding:.35rem .7rem; font-size:.86rem; }
+  }
+  /* Circuits. A switch is a statement: closed means true. Green wire is carrying current, so
+     the lamp at the end is the truth value of the whole expression. */
+  .ckt { margin:.4rem 0 .2rem; }
+  .ckt svg { display:block; max-width:100%; height:auto; margin:0 auto; }
+  .ckt .wire { stroke:var(--rule); stroke-width:2.4; fill:none; stroke-linecap:round; }
+  .ckt .wire.live { stroke:var(--live); }
+  .ckt .term { fill:var(--muted); }
+  .ckt .blade { stroke:var(--muted); stroke-width:2.8; fill:none; stroke-linecap:round; }
+  .ckt .blade.live { stroke:var(--live); }
+  .ckt .nc { stroke:var(--ink); stroke-width:2; fill:none; stroke-linecap:round; }
+  .ckt .inv { stroke:var(--ink); stroke-width:1.8; fill:var(--panel); }
+  .ckt .encl { fill:none; stroke:var(--rule); stroke-width:1.2; stroke-dasharray:5 4; }
+  .ckt .lab { font:italic 16px Georgia, "Iowan Old Style", "Times New Roman", serif;
+    fill:var(--ink); }
+  .ckt .lamp { stroke:var(--muted); stroke-width:2; fill:var(--panel); }
+  .ckt .lamp.on { stroke:var(--accent); fill:var(--lampon); }
+  .ckt .lampx { stroke:var(--muted); stroke-width:1.6; fill:none; }
+  .ckt .lamp.on + .lampx, .ckt .lampx.on { stroke:var(--accent); }
+  .ckt .batt { stroke:var(--ink); stroke-width:2.6; fill:none; stroke-linecap:round; }
+  .pills { display:flex; justify-content:center; gap:.6rem; flex-wrap:wrap; margin:.2rem 0 .9rem; }
+  .pills button { font:inherit; font-size:.92rem; font-weight:600; padding:.4rem 1.1rem;
+    border:1.6px solid var(--rule); border-radius:999px; background:var(--panel);
+    color:var(--ink); cursor:pointer; }
+  .pills button:hover { border-color:var(--accent); color:var(--accent); }
+  .pills button[aria-pressed="true"] { border-color:var(--live); background:var(--live);
+    color:#fff; }
+  .pills button:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
+  .pills .act { font-weight:600; }
+  .pills .act[aria-pressed] { background:var(--panel); }
+  .ckt-head { text-align:center; margin:.1rem 0 .2rem; font-size:1.02rem; }
+  .ckt-head .as { display:block; font-size:.82rem; color:var(--muted); margin-top:.1rem; }
+  .trio { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); }
+  .trio .cell { text-align:center; }
+  .verdict { text-align:center; margin:.8rem 0 .2rem; font-size:1.05rem; font-weight:600;
+    min-height:2.6em; }
+  .verdict.yes { color:var(--live); }
+  .verdict.no { color:var(--mp-red); }
+  .verdict .why { display:block; font-weight:400; font-size:.88rem; color:var(--muted);
+    margin-top:.2rem; }
+  #eq-pick { display:flex; justify-content:center; margin:.2rem 0 1rem; }
+  #eq-pick select { font:inherit; font-size:.92rem; padding:.35rem .6rem; border-radius:6px;
+    border:1px solid var(--rule); background:var(--panel); color:var(--ink); max-width:100%; }
+  #eq-trace { margin:1rem auto .2rem; }
+  #eq-trace td.gap { border:none; }
+</style>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("la-theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+    var f = parseFloat(localStorage.getItem("la-fs"));
+    if (f) document.documentElement.style.setProperty("--fs", f);
+    if (localStorage.getItem("la-wide") === "on")
+      document.documentElement.setAttribute("data-wide", "on");
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+<div id="top-bar">
+  <button type="button" id="toc-btn" aria-expanded="false" aria-controls="toc-panel"
+          aria-label="Show contents" title="Contents">&#9776;</button>
+  <a id="home-btn" href="../index.html">&#8962;&nbsp;Home</a>
+  <div id="bar-tools">
+    <span class="fs-label">Text size</span>
+    <button type="button" id="fs-dec" aria-label="Decrease text size">A&minus;</button>
+    <button type="button" id="fs-inc" aria-label="Increase text size">A+</button>
+    <button type="button" id="wide-btn" aria-pressed="false"
+            title="Widen the column, for projecting">Wide</button>
+    <button type="button" id="theme-btn" aria-pressed="false">Dark</button>
+  </div>
+</div>
+<nav id="toc-panel" aria-label="Contents" aria-hidden="true">
+  <p class="tp-head">Contents</p>
+  <ol>
+    <li><a href="#the-statement">The statement we are proving</a></li>
+    <li><a href="#truth-table">The truth table of $P \Rightarrow Q$</a></li>
+    <li><a href="#running-example">Two claims, three proofs each</a></li>
+    <li><a href="#contradiction">More discussion on proof by contradiction</a></li>
+    <li><a href="#why-contradiction">Why do we use proof by contradiction?</a></li>
+    <li><a href="#contrapositive">Proof by a contrapositive argument</a></li>
+    <li><a href="#induction">Proof by induction</a></li>
+    <li><a href="#switches">Switches and truth</a></li>
+    <li><a href="#a-switch-is-a-statement">A switch is a statement</a></li>
+    <li><a href="#are-two-statements-the-same">Are two statements the same?</a></li>
+    <li><a href="#arithmetic">The same table, done in arithmetic</a></li>
+  </ol>
+</nav>
+
+<header>
+  <h1 class="title">Implication, proof and light switches</h1>
+  <p class="author">Dr Farhad Babaee</p>
+</header>
+<main>
+
+<h2 id="the-statement">The statement we are proving</h2>
+
+<p>Every theorem in mathematics has the shape</p>
+\[ P \;\Longrightarrow\; Q, \]
+<p>read &ldquo;$P$ implies $Q$&rdquo;, or &ldquo;if $P$ then $Q$&rdquo;. Here $P$ and $Q$ are
+<em>statements</em>: each is either true or false, with nothing in between. $P$ is called the
+<em>hypothesis</em>, and you will also see it called the <em>assumption</em>, the
+<em>premise</em> or the <em>antecedent</em>. All four name the same thing, the statement you are
+given. $Q$ is the <em>conclusion</em>, also called the <em>consequent</em>: the statement you
+are to reach.</p>
+
+<p>It is worth being clear from the start about what $P \Rightarrow Q$ does <em>not</em> claim.
+It does not claim that $P$ is true. It does not claim that $Q$ is true. It claims only that
+$Q$ cannot fail while $P$ holds. A true implication with a false hypothesis tells you
+nothing at all about the world.</p>
+
+<p>Let us look at a bigger <em>truth table</em> below. Note that in mathematics <em>and</em> and
+<em>or</em> are sometimes denoted by $\wedge$ and $\vee$: $P \wedge Q$ means &ldquo;$P$ and
+$Q$&rdquo;, and $P \vee Q$ means &ldquo;$P$ or $Q$&rdquo;. Notice the similarity with $\cap$ and
+$\cup$.</p>
+
+<div class="widget venn" id="w-conn">
+  <p class="hint">Click on the statements $\neg P$, &ldquo;$P$ or $Q$&rdquo;, &ldquo;$P$ and
+  $Q$&rdquo; and $P \Rightarrow Q$, and read the caption.</p>
+  <div class="scroll">
+  <table class="tt" id="tt-conn">
+    <thead>
+      <tr>
+        <th class="n"></th>
+        <th>$P$</th><th>$Q$</th>
+        <th class="pick sep" data-conn="np" tabindex="0" role="button" aria-pressed="false"><span class="btn">$\neg P$</span></th>
+        <th class="pick" data-conn="or" tabindex="0" role="button" aria-pressed="false"><span class="btn">$P$ or $Q$</span></th>
+        <th class="pick" data-conn="and" tabindex="0" role="button" aria-pressed="false"><span class="btn">$P$ and $Q$</span></th>
+        <th class="pick" data-conn="imp" tabindex="0" role="button" aria-pressed="false"><span class="btn">$P \Rightarrow Q$</span></th>
+      </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td class="n">1</td>
+      <td class="T">T</td><td class="T">T</td>
+      <td class="F sep" data-col="np">F</td><td class="T" data-col="or">T</td><td class="T" data-col="and">T</td><td class="T" data-col="imp">T</td>
+    </tr>
+    <tr>
+      <td class="n">2</td>
+      <td class="T">T</td><td class="F">F</td>
+      <td class="F sep" data-col="np">F</td><td class="T" data-col="or">T</td><td class="F" data-col="and">F</td><td class="F" data-col="imp">F</td>
+    </tr>
+    <tr>
+      <td class="n">3</td>
+      <td class="F">F</td><td class="T">T</td>
+      <td class="T sep" data-col="np">T</td><td class="T" data-col="or">T</td><td class="F" data-col="and">F</td><td class="T" data-col="imp">T</td>
+    </tr>
+    <tr>
+      <td class="n">4</td>
+      <td class="F">F</td><td class="F">F</td>
+      <td class="T sep" data-col="np">T</td><td class="F" data-col="or">F</td><td class="F" data-col="and">F</td><td class="T" data-col="imp">T</td>
+    </tr>
+    </tbody>
+  </table>
+  </div>
+  <svg viewBox="0 0 520 230" id="conn-svg" role="img"
+       aria-label="A Venn diagram inside a rectangle U, with the region named by the selected statement shaded.">
+    <defs>
+      <mask id="c-outA">
+        <rect x="12" y="12" width="496" height="206" rx="10" fill="#fff"/>
+        <circle cx="260" cy="115" r="70" fill="#000"/>
+      </mask>
+      <clipPath id="c-inB"><circle cx="310" cy="115" r="66"/></clipPath>
+    </defs>
+    <rect class="u" x="12" y="12" width="496" height="206" rx="10"/>
+    <text class="note" x="26" y="34">U</text>
+
+    <!-- negation looks only at P, so only A is drawn -->
+    <g data-conn="np" hidden>
+      <circle class="sa" cx="260" cy="115" r="70"/>
+      <rect class="bad" x="12" y="12" width="496" height="206" rx="10" mask="url(#c-outA)"/>
+      <text class="lab" x="245" y="82">A</text>
+      <text class="note" x="402" y="190">A<tspan class="sup" dy="-6">c</tspan></text>
+    </g>
+
+    <g data-conn="or" hidden>
+      <circle class="sa" cx="210" cy="115" r="66"/>
+      <circle class="sb" cx="310" cy="115" r="66"/>
+      <g class="shade"><circle cx="210" cy="115" r="66"/><circle cx="310" cy="115" r="66"/></g>
+      <text class="lab" x="170" y="80">A</text>
+      <text class="lab" x="330" y="80">B</text>
+    </g>
+
+    <g data-conn="and" hidden>
+      <circle class="sa" cx="210" cy="115" r="66"/>
+      <circle class="sb" cx="310" cy="115" r="66"/>
+      <circle class="bad" cx="210" cy="115" r="66" clip-path="url(#c-inB)"/>
+      <text class="lab" x="170" y="80">A</text>
+      <text class="lab" x="330" y="80">B</text>
+    </g>
+
+    <!-- as sets the implication says A is inside B, so nothing of A escapes and the whole
+         rectangle is shaded -->
+    <g data-conn="imp" hidden>
+      <circle class="sb" cx="270" cy="115" r="80"/>
+      <circle class="sa" cx="245" cy="120" r="42"/>
+      <text class="lab" x="312" y="90">B</text>
+      <text class="lab" x="231" y="112">A</text>
+    </g>
+  </svg>
+  <div class="cap">
+    <p data-conn="np" hidden>Not $P$. It ignores $Q$ entirely and simply turns the $P$ column
+    over, so only $A$ is worth drawing. The statement is the shaded region outside it, the
+    complement $A^{c}$.</p>
+    <p data-conn="or" hidden>$P$ or $Q$. True when at least one of them holds, and false only
+    when both fail. The mathematical <em>or</em> is inclusive: both are allowed to hold at once.
+    In the picture it is $A$ together with $B$.</p>
+    <p data-conn="and" hidden>$P$ and $Q$. True only when both hold, so one failure is enough to
+    sink it. It is what you mean when you order a main course <em>and</em> a dessert: if the
+    waiter forgets one of them your order has not been filled, and it is no comfort that the
+    other arrived. In the picture it is the overlap of $A$ and $B$.</p>
+  </div>
+  <div class="rowexp" id="conn-rows">
+    <div data-conn="np" hidden>
+      <p class="rl">Reading the $\neg P$ column</p>
+      <ol class="rowlist">
+      <li>$P$ holds, so $\neg P$ fails.</li>
+      <li>$P$ holds again, so $\neg P$ fails again.</li>
+      <li>$P$ fails, so $\neg P$ holds.</li>
+      <li>$P$ fails again, so $\neg P$ holds. Only the $P$ column was ever consulted: negation does not look at $Q$ at all.</li>
+      </ol>
+    </div>
+    <div data-conn="or" hidden>
+      <p class="rl">Reading the &ldquo;$P$ or $Q$&rdquo; column</p>
+      <ol class="rowlist">
+      <li>Both hold, which is more than enough. An <em>or</em> does not object to both being true.</li>
+      <li>$P$ holds, and one of them is enough.</li>
+      <li>$Q$ holds, and again one is enough.</li>
+      <li>Neither holds, and this is the only way an <em>or</em> can fail.</li>
+      </ol>
+    </div>
+    <div data-conn="and" hidden>
+      <p class="rl">Reading the &ldquo;$P$ and $Q$&rdquo; column</p>
+      <ol class="rowlist">
+      <li>Both hold, and this is the only way an <em>and</em> can succeed.</li>
+      <li>$Q$ fails, and one failure is enough to sink it.</li>
+      <li>$P$ fails, so again the <em>and</em> fails.</li>
+      <li>Both fail.</li>
+      </ol>
+    </div>
+    <div data-conn="imp" hidden>
+      <p class="rl">Reading the $P \Rightarrow Q$ column</p>
+      <p>Think of $P$ as the statement $x \in A$, and of $Q$ as the statement $x \in B$. Then
+      $P \Rightarrow Q$ says that being in $A$ forces being in $B$, which is exactly
+      $A \subseteq B$, and the four rows are the four things that can happen to a single
+      $x$.</p>
+      <ol class="rowlist named">
+        <li><b>Row 1.</b> Reasoning correctly from a true $P$ lands you on $Q$, and $Q$ is
+        true: here $x \in A$, and the argument carries it to $x \in B$. A true hypothesis and
+        sound steps give a true conclusion, which is the situation a
+        <a href="#running-example">direct proof</a> works in, and we say more about it below.</li>
+        <li><b>Row 2.</b> The only row in which the reasoning is wrong. Starting from a correct
+        assumption and arriving at an incorrect conclusion means the deduction itself is
+        incorrect. In sets, if we find an $x$ with $x \in A$ but $x \notin B$, then
+        $A \subseteq B$ is false, and this is exactly what it means to call $x$ a
+        <em>counterexample</em> to $A \subseteq B$.</li>
+        <li><b>Rows 3 and 4.</b> Starting from an incorrect assumption and arriving at any
+        conclusion at all is mathematically sound. <strong>In real life, this is like when someone
+        says something invalid, and without any fault of our own, we might conclude something
+        invalid. We might also, by chance, deduce something valid.</strong> This happens in maths
+        too: take the false assumption $0 = 1$. Multiplying both sides by $0$ is a legitimate
+        step and gives $0 = 0$, which is true, and that is row 3. Adding $1$ to both
+        sides is equally legitimate and gives $1 = 2$, which is false, and that is row 4. The
+        same false start, the same lawful steps, and conclusions of either kind. In sets: when
+        $A \subseteq B$ and $x \notin A$, we may still have $x \in B$ or $x \notin B$, and the
+        inclusion is untroubled either way. The pictures below show both.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+
+<h2 id="truth-table">The truth table of $P \Rightarrow Q$</h2>
+
+<p>Since $P$ and $Q$ are each either true or false, there are exactly four situations to
+consider. A <em>truth table</em> lists all four and records the truth value of the compound
+statement in each. The table below shows that the three statements $P \Rightarrow Q$,
+$\neg P \vee Q$ and $\neg Q \Rightarrow \neg P$ are equivalent, since they are all true or
+false at the same time.</p>
+
+<div class="widget venn" id="w-proof">
+  <p class="hint">One table, one picture, three proofs. Press a method to see what it
+  does with the claim $A \subseteq B$, which is worked out in full further down, and
+  watch which row of the table it goes after. The rows open too.</p>
+  <div class="modes" role="group" aria-label="Choose a proof method">
+    <button type="button" data-mode="direct" aria-pressed="true">Direct</button>
+    <button type="button" data-mode="contra" aria-pressed="false">By contradiction</button>
+    <button type="button" data-mode="contrapos" aria-pressed="false">By contrapositive</button>
+    <button type="button" data-mode="counter" aria-pressed="false">Counterexample</button>
+    <button type="button" data-mode="induction" aria-pressed="false">By induction</button>
+  </div>
+<div id="tt-wrap">
+<div class="scroll">
+<table class="tt" id="tt-imp">
+  <thead>
+    <tr>
+      <th class="n"></th>
+      <th>$P$</th><th>$Q$</th>
+      <th class="sep">$\neg P$</th><th>$\neg Q$</th>
+      <th class="sep">$P \Rightarrow Q$</th>
+      <th>$\neg P \vee Q$</th>
+      <th>$\neg Q \Rightarrow \neg P$</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr data-row="1" tabindex="0" role="button" aria-expanded="false"
+        aria-controls="row-exp">
+      <td class="n">1</td>
+      <td class="T">T</td><td class="T">T</td>
+      <td class="F sep">F</td><td class="F">F</td>
+      <td data-imp class="T sep">T</td><td class="T">T</td><td class="T">T</td>
+    </tr>
+    <tr class="bad" data-row="2" tabindex="0" role="button" aria-expanded="false"
+        aria-controls="row-exp">
+      <td class="n">2</td>
+      <td class="T">T</td><td class="F">F</td>
+      <td class="F sep">F</td><td class="T">T</td>
+      <td data-imp class="F sep">F</td><td class="F">F</td><td class="F">F</td>
+    </tr>
+    <tr data-row="3" tabindex="0" role="button" aria-expanded="false"
+        aria-controls="row-exp">
+      <td class="n">3</td>
+      <td class="F">F</td><td class="T">T</td>
+      <td class="T sep">T</td><td class="F">F</td>
+      <td data-imp class="T sep">T</td><td class="T">T</td><td class="T">T</td>
+    </tr>
+    <tr data-row="4" tabindex="0" role="button" aria-expanded="false"
+        aria-controls="row-exp">
+      <td class="n">4</td>
+      <td class="F">F</td><td class="F">F</td>
+      <td class="T sep">T</td><td class="T">T</td>
+      <td data-imp class="T sep">T</td><td class="T">T</td><td class="T">T</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p class="tcap">The shaded row is the only one in which $P \Rightarrow Q$ is false.</p>
+</div>
+
+  <div id="venn-wrap">
+  <svg viewBox="0 0 520 230" id="w-proof-svg" role="img"
+       aria-label="A Venn diagram: circle A inside circle B, inside a rectangle U, with a dot x marked inside A.">
+    <defs>
+      <mask id="w-proof-outb">
+        <rect x="12" y="12" width="496" height="206" rx="10" fill="#fff"/>
+        <circle cx="260" cy="120" r="86" fill="#000"/>
+      </mask>
+    </defs>
+    <g data-mode="contrapos" hidden>
+      <rect class="bad" x="12" y="12" width="496" height="206" rx="10" mask="url(#w-proof-outb)"/>
+    </g>
+    <rect class="u" x="12" y="12" width="496" height="206" rx="10"/>
+    <text class="note" x="26" y="34">U</text>
+    <circle class="sb" cx="260" cy="120" r="86"/>
+    <circle class="sa" id="w-proof-a" cx="228" cy="126" r="42"/>
+    <text class="lab" x="300" y="88">B</text>
+    <text class="lab" x="214" y="116">A</text>
+    <g data-mode="direct">
+      <circle class="dot" cx="234" cy="140" r="4"/>
+      <text class="lab" x="242" y="152" font-size="16">x</text>
+    </g>
+    <g data-mode="contra" hidden>
+      <path class="tether" d="M269 134 L392 164"/>
+      <path class="xmark" d="M397 157 L411 171 M411 157 L397 171"/>
+      <text class="lab" x="418" y="170" font-size="16">x</text>
+      <text class="note" x="330" y="202">A &#8745; B<tspan class="sup" dy="-6">c</tspan><tspan class="sup" dy="6"> = &#8709;</tspan></text>
+    </g>
+    <g data-mode="contrapos" hidden>
+      <circle class="dot" cx="430" cy="90" r="4"/>
+      <text class="lab" x="440" y="84" font-size="16">x</text>
+      <text class="note" x="398" y="190">B<tspan class="sup" dy="-6">c</tspan></text>
+    </g>
+  </svg>
+  <svg viewBox="0 0 520 230" id="w-counter-svg" role="img" hidden
+       aria-label="A Venn diagram. Circles A and B overlap. The crescent of A lying outside B is shaded, and a dot labelled x sits in it: one element of A that is not in B.">
+    <defs>
+      <mask id="w-counter-outb">
+        <rect x="0" y="0" width="520" height="230" fill="#fff"/>
+        <circle cx="300" cy="120" r="80" fill="#000"/>
+      </mask>
+    </defs>
+    <rect class="u" x="12" y="12" width="496" height="206" rx="10"/>
+    <text class="note" x="26" y="34">U</text>
+    <circle class="sb" cx="300" cy="120" r="80"/>
+    <circle class="sa" cx="200" cy="120" r="62"/>
+    <circle class="bad" cx="200" cy="120" r="62" mask="url(#w-counter-outb)"/>
+    <text class="lab" x="168" y="90">A</text>
+    <text class="lab" x="336" y="88">B</text>
+    <circle class="dot" cx="162" cy="124" r="4"/>
+    <text class="lab" x="150" y="112" font-size="16">x</text>
+  </svg>
+  </div>
+
+  <div id="dom-wrap" hidden>
+    <figure class="domrow">
+      <svg viewBox="0 0 310 126" class="dom" id="dom-good" role="img" aria-label="Every domino within reach of the next: push the first and all of them fall.">
+        <path class="floor" d="M24 96 H296"/>
+        <polygon data-i="0" data-x="40" points="40.00,96.00 52.00,96.00 52.00,50.00 40.00,50.00"/>
+        <text class="dlab" x="46" y="114" text-anchor="middle">1</text>
+        <polygon data-i="1" data-x="70" points="70.00,96.00 82.00,96.00 82.00,50.00 70.00,50.00"/>
+        <text class="dlab" x="76" y="114" text-anchor="middle">2</text>
+        <polygon data-i="2" data-x="100" points="100.00,96.00 112.00,96.00 112.00,50.00 100.00,50.00"/>
+        <text class="dlab" x="106" y="114" text-anchor="middle">3</text>
+        <polygon data-i="3" data-x="130" points="130.00,96.00 142.00,96.00 142.00,50.00 130.00,50.00"/>
+        <text class="dlab" x="136" y="114" text-anchor="middle">⋯</text>
+        <polygon data-i="4" data-x="160" points="160.00,96.00 172.00,96.00 172.00,50.00 160.00,50.00"/>
+        <text class="dlab" x="166" y="114" text-anchor="middle">k</text>
+        <polygon data-i="5" data-x="190" points="190.00,96.00 202.00,96.00 202.00,50.00 190.00,50.00"/>
+        <text class="dlab" x="196" y="114" text-anchor="middle">k+1</text>
+        <polygon data-i="6" data-x="220" points="220.00,96.00 232.00,96.00 232.00,50.00 220.00,50.00"/>
+        <text class="dlab" x="226" y="114" text-anchor="middle">⋯</text>
+      </svg>
+      <figcaption>Every domino within reach of the next: push the first and all of them fall.</figcaption>
+    </figure>
+    <figure class="domrow">
+      <svg viewBox="0 0 310 126" class="dom" id="dom-bad" role="img" aria-label="The step from k to k+1 fails, so everything from k+1 onwards stays standing.">
+        <path class="floor" d="M24 96 H296"/>
+        <polygon data-i="0" data-x="40" points="40.00,96.00 52.00,96.00 52.00,50.00 40.00,50.00"/>
+        <text class="dlab" x="46" y="114" text-anchor="middle">1</text>
+        <polygon data-i="1" data-x="70" points="70.00,96.00 82.00,96.00 82.00,50.00 70.00,50.00"/>
+        <text class="dlab" x="76" y="114" text-anchor="middle">2</text>
+        <polygon data-i="2" data-x="100" points="100.00,96.00 112.00,96.00 112.00,50.00 100.00,50.00"/>
+        <text class="dlab" x="106" y="114" text-anchor="middle">3</text>
+        <polygon data-i="3" data-x="130" points="130.00,96.00 142.00,96.00 142.00,50.00 130.00,50.00"/>
+        <text class="dlab" x="136" y="114" text-anchor="middle">⋯</text>
+        <polygon data-i="4" data-x="160" points="160.00,96.00 172.00,96.00 172.00,50.00 160.00,50.00"/>
+        <text class="dlab" x="166" y="114" text-anchor="middle">k</text>
+        <polygon data-i="5" data-x="230" points="230.00,96.00 242.00,96.00 242.00,50.00 230.00,50.00"/>
+        <text class="dlab" x="236" y="114" text-anchor="middle">k+1</text>
+        <polygon data-i="6" data-x="260" points="260.00,96.00 272.00,96.00 272.00,50.00 260.00,50.00"/>
+        <text class="dlab" x="266" y="114" text-anchor="middle">⋯</text>
+      </svg>
+      <figcaption>The step from k to k+1 fails, so everything from k+1 onwards stays standing.</figcaption>
+    </figure>
+    <div class="modes">
+      <button type="button" id="dom-push">Push the first domino</button>
+      <button type="button" id="dom-reset">Stand them up again</button>
+    </div>
+  </div>
+  <div class="cap">
+    <p data-mode="direct">To prove $A \subseteq B$, we take an arbitrary $x \in A$ and show
+    that $x \in B$.</p>
+    <p data-mode="contra" hidden>We want to prove that row 2 never happens. The ringed
+    entries are the three rows a true implication allows, and row 2 is the one it forbids. So
+    instead of proving $A \subseteq B$ directly, we prove that $x \in A$ and $x \notin B$
+    never happens, that is, $A \cap B^{c} = \emptyset$.</p>
+    <p data-mode="contrapos" hidden>We want to prove $A \subseteq B$. Instead we prove that
+    $B^{c} \subseteq A^{c}$, or equivalently, that if $x \notin B$ then $x \notin A$.</p>
+    <p data-mode="counter" hidden>To say that $A$ is <em>not</em> a subset of $B$, we only need
+    to find one $x$ with $x \in A$ and $x \notin B$. One is enough: a universal claim is
+    refuted by a single case, which is why the circles no longer sit one inside the other.</p>
+    <p data-mode="induction" hidden>The idea of induction. If the first few fall, and every
+    domino that falls is close enough to knock over the next, then all of them must eventually
+    fall. Pushing the first is the base case; each domino being within reach of its neighbour is
+    the inductive step. Take away either one and the argument stops, as the second row
+    shows.</p>
+  </div>
+  <div id="w-ex">
+    <div class="box" data-mode="counter" hidden>
+      <span class="label">One animal is enough</span>
+      <p>Biology is full of confident universal claims, and they fall the same way. Take
+      &ldquo;every mammal gives birth to live young&rdquo;. It is tidy, it is almost always
+      right, and the platypus destroys it by laying eggs. Echidnas lay them too, but the first
+      one was already enough: a single counterexample retires the claim, and what survives is
+      the weaker statement that <em>most</em> mammals do, together with a name for the ones
+      that do not.</p>
+    </div>
+  </div>
+  <div class="rowexp" id="row-exp">
+    <p class="prompt" data-row="0">Tap any row of the table to see what that line is
+    claiming.</p>
+    <div data-row="1" hidden>
+      <p class="rl">Row 1. $P$ true, $Q$ true, so $P \Rightarrow Q$ is true.</p>
+      <p><strong>This is the essence of the direct proof.</strong> If $P$ is true, and correct
+      logic carries you from $P$ to $Q$, that is, if $P \Rightarrow Q$ is true as well, then
+      $Q$ has to be true. Start where the hypothesis puts you, take valid steps, and you arrive
+      at the conclusion. In the picture, $x$ is in $A$, and the argument carries it into
+      $B$.</p>
+    </div>
+    <div data-row="2" hidden>
+      <p class="rl">Row 2. $P$ true, $Q$ false, so $P \Rightarrow Q$ is false.</p>
+      <p>The one row that breaks the promise, and so the only one a proof has to rule out. The
+      hypothesis holds and the conclusion fails: this is what a counterexample looks like. In
+      sets it is an $x$ lying in $A$ but not in $B$, which is why $A \subseteq B$ and
+      $A \cap B^{c} = \emptyset$ say the same thing.</p>
+    </div>
+    <div data-row="3" hidden>
+      <p class="rl">Row 3. $P$ false, $Q$ true, so $P \Rightarrow Q$ is true.</p>
+      <p>The hypothesis fails, so the promise was never put to the test and cannot have been
+      broken. Notice that $Q$ happens to be true here anyway. An implication never claims to
+      explain why $Q$ holds, only that $Q$ cannot fail while $P$ holds.</p>
+    </div>
+    <div data-row="4" hidden>
+      <p class="rl">Row 4. $P$ false, $Q$ false, so $P \Rightarrow Q$ is true.</p>
+      <p><strong>This is the essence of the proof by a contrapositive argument.</strong> If $Q$ is
+      false, and $P \Rightarrow Q$ is true, then $P$ has to be false. Read the table the other
+      way up: assuming $\neg Q$ leaves only rows 2 and 4, and row 2 is the one a true
+      implication forbids, so you land here, where $P$ is false.</p>
+      <p>It is also where a false premise shows how empty it is: with $P$ false you may put
+      anything at all in $Q$ and the implication still stands, which is exactly why nothing can
+      be learned from it.</p>
+    </div>
+  </div>
+</div>
+
+
+<p>Read the $P \Rightarrow Q$ column and notice how little it takes for an implication to be
+true. It is false in exactly one situation: $P$ true and $Q$ false. In rows 3 and 4 the
+hypothesis fails, and the implication is declared true by default. Mathematicians call such a
+statement <em>vacuously true</em>, and it is the formal counterpart of the umbrella above.</p>
+
+<div class="think">
+  <span class="label">Food for thought</span>
+  <p>Read &ldquo;every integer divisible by $6$ is even&rdquo; as a promise made about each
+  integer in turn, and ask which integers could ever break it.</p>
+</div>
+
+<h2 id="running-example">Two claims, three proofs each</h2>
+
+<p>Here are two claims, each proved three times, so that the only thing changing is the method.</p>
+
+<div class="box">
+  <span class="label">Claim (the running example)</span>
+  <p>Let $A = \{\, n \in \mathbb{Z} : 6 \mid n \,\}$ and $B = \{\, n \in \mathbb{Z} : 2 \mid n \,\}$.
+  Then $A \subseteq B$.</p>
+  <p>In words: <em>every integer divisible by $6$ is even</em>. Each method proves it in its own
+  form:</p>
+  <ul>
+    <li><strong>Direct proof.</strong> If $n$ is divisible by $6$, then $n$ is even.</li>
+    <li><strong>Contrapositive.</strong> If $n$ is odd, then $n$ is not divisible by $6$.</li>
+    <li><strong>Contradiction.</strong> No integer is both divisible by $6$ and odd.</li>
+  </ul>
+</div>
+
+<p>Complements are taken in $\mathbb{Z}$, so $B^{c}$ is the set of odd integers.</p>
+
+<details class="proof">
+  <summary>Proof (direct)</summary>
+  <p>Let $x \in A$. By definition of $A$ there is some $k \in \mathbb{Z}$ with</p>
+  \[ x = 6k. \]
+  <p>Then $x = 2(3k)$, and $3k \in \mathbb{Z}$, so $2 \mid x$, which says precisely that
+  $x \in B$.</p>
+  <p>The element $x$ was arbitrary, so $A \subseteq B$.<span class="qed">&#9633;</span></p>
+</details>
+
+<details class="proof">
+  <summary>Proof (by contrapositive)</summary>
+  <p>We show $B^{c} \subseteq A^{c}$. Let $x \notin B$, so $x$ is odd.</p>
+  <p>If $x$ were in $A$ then $x = 6k = 2(3k)$ would be even, which it is not. So $x \notin A$.</p>
+  <p>As $x$ was arbitrary, $B^{c} \subseteq A^{c}$, and therefore
+  $A \subseteq B$.<span class="qed">&#9633;</span></p>
+</details>
+
+<details class="proof">
+  <summary>Proof (by contradiction)</summary>
+  <p>Suppose $A \cap B^{c} \neq \emptyset$, and choose $x \in A \cap B^{c}$. Then $6 \mid x$ and
+  $x$ is odd.</p>
+  <p>From $6 \mid x$ we get $x = 6k = 2(3k)$, so $x$ is even. So $x$ is both even and odd, which
+  is impossible.</p>
+  <p>The assumption is untenable, so $A \cap B^{c} = \emptyset$, that is
+  $A \subseteq B$.<span class="qed">&#9633;</span></p>
+</details>
+
+<div class="box">
+  <span class="label">Claim (a second example)</span>
+  <p>Let $n \in \mathbb{Z}$. If $n^{2}$ is odd, then $n$ is odd.</p>
+  <p>Each method proves it in its own form:</p>
+  <ul>
+    <li><strong>Direct proof.</strong> If $n^{2}$ is odd, then $n$ is odd.</li>
+    <li><strong>Contrapositive.</strong> If $n$ is even, then $n^{2}$ is even.</li>
+    <li><strong>Contradiction.</strong> No integer $n$ is even while $n^{2}$ is odd.</li>
+  </ul>
+</div>
+
+<details class="proof">
+  <summary>Proof (direct)</summary>
+  <p>Divide $n$ by $2$: $n = 2q + r$ with $q \in \mathbb{Z}$ and $r \in \{0, 1\}$. Then</p>
+  \[ \begin{aligned}
+     n^{2} &= 4q^{2} + 4qr + r^{2} \\
+           &= 2\bigl(2q^{2} + 2qr\bigr) + r ,
+     \end{aligned} \]
+  <p>since $r^{2} = r$ when $r$ is $0$ or $1$. So $n^{2}$ leaves the same remainder $r$ on division
+  by $2$ as $n$ does. As $n^{2}$ is odd, that remainder is $1$, and $n = 2q + 1$ is
+  odd.<span class="qed">&#9633;</span></p>
+</details>
+
+<details class="proof">
+  <summary>Proof (by contrapositive)</summary>
+  <p>We prove: if $n$ is even, then $n^{2}$ is even. Suppose $n = 2m$ with $m \in \mathbb{Z}$.
+  Then $n^{2} = 4m^{2} = 2(2m^{2})$, and $2m^{2} \in \mathbb{Z}$, so $n^{2}$ is even. This is the
+  contrapositive of the claim.<span class="qed">&#9633;</span></p>
+</details>
+
+<details class="proof">
+  <summary>Proof (by contradiction)</summary>
+  <p>Suppose $n^{2}$ is odd but $n$ is not odd, so that $n$ is even: $n = 2m$ with
+  $m \in \mathbb{Z}$. Then $n^{2} = 4m^{2} = 2(2m^{2})$ is even. So $n^{2}$ is both odd and even,
+  which is impossible. Hence $n$ is odd.<span class="qed">&#9633;</span></p>
+</details>
+
+<h2 id="contradiction">More discussion on proof by contradiction</h2>
+
+<p>Start by negating the implication, because its negation is exactly what this method assumes.
+Take the middle of the three equivalent forms, $\neg P \vee Q$, and negate it. The negation of an
+<em>or</em> is an <em>and</em>, by De Morgan's law, and negating $\neg P$ gives back $P$:</p>
+\[ \neg (P \Rightarrow Q) \;=\; \neg(\neg P \vee Q) \;=\; P \wedge \neg Q . \]
+<p>So the statement to be ruled out is $P \wedge \neg Q$: the hypothesis holds <em>and</em> the
+conclusion fails, both at once. That is row 2, and a proof by contradiction assumes it and shows
+that it cannot happen.</p>
+
+<h3 id="why-contradiction">Why do we use proof by contradiction?</h3>
+
+<p>Because sometimes it is easier to show that if something were not true, it would
+<span class="accent">cause chaos</span>, so it has to be true. Here is the classic example, proved
+below: the axioms of
+<span style="white-space:nowrap">mathematics $\Longrightarrow \sqrt{2} \notin \mathbb{Q}$</span>. By
+contradiction: if $\sqrt{2}$ were rational, mathematics would fall apart!</p>
+
+<p>In fact, legend has it that someone was <span class="accent">killed</span> over it. The
+Pythagoreans of ancient Greece taught that everything could be described by whole numbers and
+their ratios. One of them, usually named as Hippasus of Metapontum, in the fifth century BC, is
+said to have found that the side and the diagonal of a square have no common unit of length, which
+is the statement that $\sqrt{2}$ is irrational, and to have been drowned at sea for revealing it.
+The story was written down many centuries later, and its versions disagree, so it is a legend
+rather than history.</p>
+
+<div class="box">
+  <span class="label">Claim</span>
+  <p>$\sqrt{2}$ is irrational, that is, $\sqrt{2} \notin \mathbb{Q}$.</p>
+</div>
+
+<p>Before proving it, ask what $P$ and $Q$ are here, because at first sight the claim has no
+hypothesis at all. It simply says that $\sqrt{2}$ is irrational. So where is the implication?</p>
+
+<p>$Q$ is the easy half: it is the statement $\sqrt{2} \notin \mathbb{Q}$. And $P$ is everything
+we are standing on when we assert it. The axioms for the integers and for the rationals, what it
+means for one integer to divide another, the rules of arithmetic, the definition of a square
+root. A theorem with no visible hypothesis is a theorem whose hypothesis is the background
+mathematics itself, and the implication is</p>
+\[ \text{The axioms of maths} \;\Longrightarrow\; \sqrt{2} \notin \mathbb{Q} . \]
+
+<details class="proof">
+  <summary>Proof (by contradiction)</summary>
+  <p>Suppose instead that $\sqrt{2} \in \mathbb{Q}$. Then we may write</p>
+  \[ \sqrt{2} = \frac{p}{q}, \qquad p, q \in \mathbb{Z}, \quad q \neq 0, \]
+  <p>in lowest terms, so $p$ and $q$ have no common factor greater than $1$. Squaring and clearing
+  the denominator,</p>
+  \[ 2q^{2} = p^{2}. \]
+  <p>So $p^{2}$ is even, and therefore $p$ is even, by the lemma below. Write $p = 2m$, so that</p>
+  \[ 2q^{2} = 4m^{2}, \qquad \text{hence} \qquad q^{2} = 2m^{2}. \]
+  <p>Now $q^{2}$ is even, so by the same lemma $q$ is even. But then $2$ divides both $p$ and $q$,
+  contradicting lowest terms.<span class="qed">&#9633;</span></p>
+</details>
+
+<div class="think">
+  <span class="label">Food for thought</span>
+  <p>Where exactly did the proof use that $2$ is prime? Run the same argument on $\sqrt{4}$
+  and watch it break; the step that fails is the one that deserves your attention.</p>
+</div>
+
+<h2 id="contrapositive">Proof by a contrapositive argument</h2>
+
+<p>The <em>contrapositive</em> of $P \Rightarrow Q$ is $\neg Q \Rightarrow \neg P$, and the truth
+table above showed that the two are the same statement.</p>
+
+<div class="box">
+  <span class="label">Warning: the contrapositive is not $\neg P \Rightarrow \neg Q$</span>
+  <p>Negating both sides and leaving them in place gives $\neg P \Rightarrow \neg Q$, which is
+  <em>not</em> equivalent to $P \Rightarrow Q$. Row 3 settles it: there $P$ is false and $Q$ is
+  true, so $P \Rightarrow Q$ is true while $\neg P \Rightarrow \neg Q$ reads
+  $\mathrm{T} \Rightarrow \mathrm{F}$ and is false. The arrow has to be reversed as well as
+  negated.</p>
+  <p>Concretely: &ldquo;divisible by $6$ $\Rightarrow$ even&rdquo; is true, but &ldquo;not
+  divisible by $6$ $\Rightarrow$ not even&rdquo; is false, as $4$ shows ($4$ is both not
+  divisible by $6$ and still even).</p>
+</div>
+
+<p>Here is where the contrapositive genuinely earns its place, and the lemma the $\sqrt{2}$ proof
+borrowed.</p>
+
+<div class="box">
+  <span class="label">Lemma</span>
+  <p>Let $n \in \mathbb{Z}$. If $n^{2}$ is even, then $n$ is even.</p>
+</div>
+
+<p>Directly, the hypothesis gives $n^{2} = 2k$, and getting from there to $n$ means taking a square
+root. The contrapositive hands you $n$ itself.</p>
+
+<details class="proof">
+  <summary>Proof (by contrapositive)</summary>
+  <p>We prove: if $n$ is odd, then $n^{2}$ is odd. Suppose $n = 2m + 1$ with $m \in \mathbb{Z}$.
+  Then</p>
+  \[ \begin{aligned}
+     n^{2} &= (2m+1)^{2} \\
+           &= 4m^{2} + 4m + 1 \\
+           &= 2\bigl(2m^{2} + 2m\bigr) + 1 ,
+     \end{aligned} \]
+  <p>and $2m^{2} + 2m \in \mathbb{Z}$, so $n^{2}$ is odd. This is exactly the contrapositive of the
+  lemma.<span class="qed">&#9633;</span></p>
+</details>
+
+<h2 id="induction">Proof by induction</h2>
+
+<p>The idea is in the table of proof methods above: press <em>By induction</em>. Here are two
+proofs that use it.</p>
+
+  <div class="box">
+    <span class="label">Two dominoes to push: the Fibonacci numbers</span>
+    <p>Set $F_{1} = F_{2} = 1$ and $F_{n+1} = F_{n} + F_{n-1}$. Each term leans on the
+    <em>two</em> before it, so one push will not do: the first two have to be toppled by
+    hand.</p>
+    <p>Claim: $F_{n} < 2^{n}$ for every $n \geq 1$.</p>
+    <p>The two base cases are $F_{1} = 1 < 2$ and $F_{2} = 1 < 4$. For the step, suppose
+    $F_{k-1} < 2^{k-1}$ and $F_{k} < 2^{k}$. Then</p>
+    \[ \begin{aligned}
+       F_{k+1} &= F_{k} + F_{k-1} \\
+               &< 2^{k} + 2^{k-1} \\
+               &< 2^{k} + 2^{k} \;=\; 2^{k+1}.
+       \end{aligned} \]
+    <p>So domino $k+1$ goes over as soon as $k$ and $k-1$ have, and with the first two pushed
+    by hand every one of them falls.</p>
+  </div>
+
+  <div class="box">
+    <span class="label">One domino to push: the triangle inequality for many vectors</span>
+    <p>Theorem 1.14 (iii) of the notes says that for $v, w \in \mathbb{R}^{n}$,</p>
+    \[ \|v + w\| \;\leq\; \|v\| + \|w\| . \]
+    <p>It is stated for two vectors. Induction gets it for any number of them at once: for
+    all $m \geq 2$ and all $v_{1}, \dots, v_{m} \in \mathbb{R}^{n}$,</p>
+    \[ \begin{aligned}
+       &\|v_{1} + v_{2} + \dots + v_{m}\| \\
+       &\qquad \leq\; \|v_{1}\| + \|v_{2}\| + \dots + \|v_{m}\| .
+       \end{aligned} \]
+    <p>Here one push is enough, because each term leans only on the one before it. The base
+    case $m = 2$ is the theorem itself. For the step, suppose the claim holds for $m = k$.
+    Bracket the first $k$ vectors together and apply the two-vector case:</p>
+    \[ \begin{aligned}
+       &\|v_{1} + \dots + v_{k} + v_{k+1}\| \\
+       &\qquad =\; \bigl\| (v_{1} + \dots + v_{k}) + v_{k+1} \bigr\| \\
+       &\qquad \leq\; \|v_{1} + \dots + v_{k}\| + \|v_{k+1}\| ,
+       \end{aligned} \]
+    <p>and the inductive hypothesis bounds the first term by
+    $\|v_{1}\| + \dots + \|v_{k}\|$, which gives the claim for $m = k+1$.</p>
+    <p>Compare the two examples. Fibonacci needed two dominoes pushed by hand because each
+    term leans on the two before it. This one needs only one, because each step reaches back
+    a single place. How many you must push by hand is decided by how far back the step
+    reaches.</p>
+  </div>
+
+<h2 id="switches">Switches and truth</h2>
+
+<h3 id="a-switch-is-a-statement">A switch is a statement</h3>
+
+<p>In 1937 Claude Shannon noticed that the algebra of switching circuits and the algebra of
+true and false are the same algebra. The dictionary is short enough to give in one line. A
+switch is a statement. <span class="accent">Closed</span> means <em>true</em> and
+<span class="accent">open</span> means <em>false</em>, and the lamp at the end of the circuit
+lights exactly when the whole expression is true.</p>
+
+<p>That gives you three things to build with.</p>
+
+<ul>
+  <li><strong>$P \wedge Q$ is two switches in series.</strong> Current has to get through both,
+  so the lamp lights only when both are closed.</li>
+  <li><strong>$P \vee Q$ is two switches in parallel.</strong> Either branch will do, so the
+  lamp lights when at least one is closed.</li>
+  <li><strong>$\neg P$ is a <span class="accent">break contact</span>.</strong> This is the
+  piece people usually mean when they ask what negation looks like in a circuit: a contact
+  wired so that it conducts when the switch is <em>not</em> pressed. Electricians call it
+  <em>normally closed</em>; in logic gates the same idea is the <em>inverter</em>, drawn as a
+  triangle with a small bubble on its output. The bubble is the negation.</li>
+</ul>
+
+<div class="widget" id="w-prims">
+  <p class="hint">Throw the switches and watch the three lamps. The marked contact in the third
+  circuit is the break contact: it conducts when $P$ is off.</p>
+  <div class="pills" id="prim-sw"></div>
+  <div class="trio">
+    <div class="cell"><p class="ckt-head">P &and; Q</p><div class="ckt" id="c-and"></div></div>
+    <div class="cell"><p class="ckt-head">P &or; Q</p><div class="ckt" id="c-or"></div></div>
+    <div class="cell"><p class="ckt-head">&not;P</p><div class="ckt" id="c-not"></div></div>
+  </div>
+</div>
+
+<noscript>
+  <p class="numnote">The circuits on this page are drawn by script, so with JavaScript turned
+  off you will see the words but not the diagrams.</p>
+</noscript>
+
+<div class="think" id="no-switch">
+  <span class="label">Food for thought: a circuit for $\Rightarrow$</span>
+  <p>There is no switch for $\Rightarrow$. Implication has to be built out of the other three,
+  and the truth table says how: $P \Rightarrow Q$ is the same statement as $\neg P \vee Q$. So
+  the circuit for an implication is a break contact for $P$ in parallel with an ordinary
+  contact for $Q$. Watch for it below.</p>
+  <p>Using this equivalence, the light switches for $P \Rightarrow Q$ are the ones for
+  $\neg P \vee Q$, drawn here.</p>
+  <div class="pills" id="imp-sw"></div>
+  <div class="ckt" id="c-imp"></div>
+</div>
+
+<h3 id="are-two-statements-the-same">Are two statements the same?</h3>
+
+<p>Two statements are <em>logically equivalent</em> when they are true in exactly the same
+circumstances, which is to say that their truth tables agree row for row. In circuits that
+reads even more plainly: wire both up to the same switches, and ask whether the two lamps ever
+disagree.</p>
+
+<p>So here is a machine for settling it. Pick a pair of statements, and the checker walks
+through every combination of the switches in turn. If it ever finds a combination where one
+lamp is on and the other is off, it stops there and reports that the two are
+<span class="accent">not equivalent</span>, with the combination that separates them. If it
+gets through all of them with the lamps always agreeing, they are
+<span class="accent">equivalent</span>.</p>
+
+<div class="widget" id="w-eq">
+  <div id="eq-pick">
+    <label>
+      <span class="tiny">Compare&nbsp;</span>
+      <select id="eq-sel" aria-label="Choose a pair of statements to compare"></select>
+    </label>
+  </div>
+  <div class="pills" id="eq-sw"></div>
+  <p class="ckt-head" id="eq-h1"></p>
+  <div class="ckt" id="eq-c1"></div>
+  <p class="ckt-head" id="eq-h2"></p>
+  <div class="ckt" id="eq-c2"></div>
+  <div class="pills">
+    <button type="button" class="act" id="eq-run">Check all combinations</button>
+    <button type="button" class="act" id="eq-step">Step</button>
+    <button type="button" class="act" id="eq-reset">Reset</button>
+  </div>
+  <div class="scroll"><table class="tt" id="eq-trace"></table></div>
+  <p class="verdict" id="eq-verdict"></p>
+</div>
+
+<p>Three of the pairs in that list are worth sitting with. The contrapositive
+$\neg Q \Rightarrow \neg P$ agrees with $P \Rightarrow Q$ on every row, which is why you are
+allowed to prove either one in place of the other. The converse-negation
+$\neg P \Rightarrow \neg Q$ does not, and the checker stops on the row that separates them.
+And De Morgan's laws turn a series pair into a parallel pair the moment you negate it, which is
+exactly what the two circuits show.</p>
+
+<h2 id="arithmetic">The same table, done in arithmetic</h2>
+
+<div class="box">
+  <p>Nothing above needs the words <em>true</em> and <em>false</em>. Write $1$ for true and $0$
+  for false, so that $P, Q \in \{0, 1\}$, and the four statements become ordinary operations on
+  numbers:</p>
+  \[ \begin{aligned}
+     \neg P &= 1 - P, \\
+     P \vee Q &= \max(P, Q), \\
+     P \wedge Q &= P \cdot Q, \\
+     P \Rightarrow Q &= \max(1 - P,\; Q) .
+     \end{aligned} \]
+  <p>Each one is worth a moment. Negation flips $0$ and $1$, which is what subtracting from $1$
+  does. An <em>or</em> takes the larger of the two, so it is $1$ as soon as either is. An
+  <em>and</em> multiplies, so a single $0$ destroys it, which is exactly the one-failure-is-enough
+  rule. And the implication is read off its own equivalent form, $\neg P \vee Q$, giving
+  $\max(1 - P, Q)$: it is $0$ only when $1 - P$ and $Q$ are both $0$, that is, only when $P = 1$
+  and $Q = 0$. That is row 2 again, arrived at by arithmetic.</p>
+  <p>You could equally write $P \wedge Q = \min(P, Q)$, since on $\{0,1\}$ the product and the
+  minimum agree. The point is not which formula you choose but that the whole table is a
+  calculation.</p>
+  <p>This is related to <a href="https://en.wikipedia.org/wiki/Tropical_semiring" target="_blank"
+  rel="noopener">tropical algebra</a>, which computes with $\max$ in place of $+$, as <em>or</em>
+  does here, and with $+$ in place of $\times$. Tropical geometry is built on it.</p>
+</div>
+
+</main>
+
+<footer>
+  Notes material is copyright of the University of Bristol. Educational use only.
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var save = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+
+  // ---- dark mode ----
+  var btn = document.getElementById("theme-btn");
+  function dark() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function paint() {
+    var d = dark();
+    btn.textContent = d ? "Light" : "Dark";
+    btn.setAttribute("aria-pressed", d ? "true" : "false");
+    btn.setAttribute("aria-label", d ? "Switch to light mode" : "Switch to dark mode");
+  }
+  btn.addEventListener("click", function () {
+    var next = dark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    save("la-theme", next);
+    paint();
+  });
+  paint();
+
+  // ---- text size ----
+  var MIN = 0.85, MAX = 1.6, STEP = 0.15;
+  function fs() { return parseFloat(getComputedStyle(root).getPropertyValue("--fs")) || 1; }
+  function setFs(v) {
+    v = Math.min(MAX, Math.max(MIN, Math.round(v * 100) / 100));
+    root.style.setProperty("--fs", v);
+    save("la-fs", v);
+    document.getElementById("fs-dec").disabled = v <= MIN;
+    document.getElementById("fs-inc").disabled = v >= MAX;
+  }
+  // ---- wide mode ----
+  // Width is an attribute on the root, like the theme, so the head script can restore it before
+  // the first paint and the page does not visibly reflow on load.
+  var wbtn = document.getElementById("wide-btn");
+  function paintWide() {
+    var on = root.getAttribute("data-wide") === "on";
+    wbtn.setAttribute("aria-pressed", on ? "true" : "false");
+    wbtn.textContent = on ? "Narrow" : "Wide";
+    wbtn.title = on ? "Back to the reading width" : "Widen the column, for projecting";
+  }
+  wbtn.addEventListener("click", function () {
+    var on = root.getAttribute("data-wide") === "on";
+    if (on) root.removeAttribute("data-wide"); else root.setAttribute("data-wide", "on");
+    save("la-wide", on ? "off" : "on");
+    paintWide();
+  });
+  paintWide();
+
+  document.getElementById("fs-dec").addEventListener("click", function () { setFs(fs() - STEP); });
+  document.getElementById("fs-inc").addEventListener("click", function () { setFs(fs() + STEP); });
+  setFs(fs());
+})();
+</script>
+
+<script>
+(function () {
+  var btn = document.getElementById("toc-btn");
+  var panel = document.getElementById("toc-panel");
+  if (!btn || !panel) return;
+  function setOpen(on) {
+    panel.classList.toggle("open", on);
+    btn.setAttribute("aria-expanded", on ? "true" : "false");
+    panel.setAttribute("aria-hidden", on ? "false" : "true");
+    btn.setAttribute("aria-label", on ? "Hide contents" : "Show contents");
+  }
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    setOpen(!panel.classList.contains("open"));
+  });
+  // jumping to a section closes the panel so the text is not covered
+  panel.addEventListener("click", function (e) {
+    if (e.target.closest("a")) setOpen(false);
+    else e.stopPropagation();
+  });
+  document.addEventListener("click", function (e) {
+    if (panel.classList.contains("open") && !panel.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") setOpen(false);
+  });
+  setOpen(false);
+})();
+</script>
+
+<script>
+(function () {
+  var box = document.getElementById("w-proof");
+  if (!box) return;
+  var svg = document.getElementById("w-proof-svg");
+  var acircle = document.getElementById("w-proof-a");
+  var cap = box.querySelector(".cap");
+  var panel = document.getElementById("row-exp");
+  // only the buttons that name a method: the domino row reuses .modes for its styling,
+  // and picking those up here gave them a show(null) handler that re-hid the widget
+  var btns = [].slice.call(box.querySelectorAll(".modes button[data-mode]"));
+  var rows = [].slice.call(box.querySelectorAll("#tt-imp tbody tr[data-row]"));
+  var blocks = [].slice.call(panel.querySelectorAll("[data-row]"));
+  // which line of the table each method is aiming at
+  var AIMS = {direct: ["1"], contra: [], contrapos: ["4"]};   // rows each method outlines
+  var NOTE = {direct: "1", contra: "2", contrapos: "4"};      // the note each method opens
+  // Pressing a row may also switch the method on. Row 4 is the line proof by contrapositive
+  // goes after, so pressing it selects that method rather than merely opening the note.
+  var ROW_MODE = {"4": "contrapos"};
+  var imps = [].slice.call(box.querySelectorAll("#tt-imp tbody td[data-imp]"));
+  // All three captions and all four row notes are written out in the page, so MathJax typesets
+  // them on load and switching only shows and hides what is already set. Swapping the text
+  // instead would leave raw TeX on screen, because MathJax typesets the document once.
+  var LABEL = {
+    direct: "A Venn diagram: circle A inside circle B, inside a rectangle U, with a dot x marked inside A.",
+    contra: "A Venn diagram: circle A inside circle B. A dashed line runs from A out to a red cross outside B, marking the one place a counterexample would have to sit.",
+    contrapos: "A Venn diagram: circle A, drawn dashed, inside circle B. Everything inside the rectangle but outside B is shaded, and a dot x sits in the shaded region."
+  };
+  // hidden is a property of HTMLElement only, so the SVG groups have to be set by attribute
+  function setShown(el, on) {
+    if (on) el.removeAttribute("hidden"); else el.setAttribute("hidden", "");
+  }
+  function mark(which) {           // which: array of row numbers to call out
+    rows.forEach(function (r) {
+      var on = which.indexOf(r.getAttribute("data-row")) >= 0;
+      r.classList.toggle("sel", on);
+      r.setAttribute("aria-expanded", on ? "true" : "false");
+    });
+  }
+  function openRow(n) {            // "0" closes every note and shows the prompt
+    blocks.forEach(function (b) { setShown(b, b.getAttribute("data-row") === n); });
+  }
+  // only the three methods that argue about the implication itself use the table
+  var USES_TABLE = {direct: true, contra: true, contrapos: true};
+  var ttWrap = document.getElementById("tt-wrap");
+  var vennWrap = document.getElementById("venn-wrap");
+  var counterSvg = document.getElementById("w-counter-svg");
+  var domWrap = document.getElementById("dom-wrap");
+  var exbox = document.getElementById("w-ex");
+  function show(mode) {
+    var onTable = !!USES_TABLE[mode];
+    setShown(ttWrap, onTable);
+    setShown(panel, onTable);
+    setShown(vennWrap, mode !== "induction");
+    setShown(svg, onTable);
+    setShown(counterSvg, mode === "counter");
+    setShown(domWrap, mode === "induction");
+    if (onTable) {
+      [].forEach.call(svg.querySelectorAll("[data-mode]"), function (g) {
+        setShown(g, g.getAttribute("data-mode") === mode);
+      });
+      acircle.setAttribute("class", mode === "contrapos" ? "sa dash" : "sa");
+      svg.setAttribute("aria-label", LABEL[mode]);
+      mark(AIMS[mode]);
+      // contradiction works on the column rather than a row: ring every entry where the
+      // implication holds, which leaves row 2, the one it has to rule out, standing alone
+      imps.forEach(function (td) {
+        td.classList.toggle("hot", mode === "contra" && td.textContent.trim() === "T");
+      });
+      openRow(NOTE[mode]);
+    } else {
+      mark([]);
+      imps.forEach(function (td) { td.classList.remove("hot"); });
+      openRow("0");
+    }
+    if (window.resetDominoes) window.resetDominoes();
+    [].forEach.call(cap.querySelectorAll("[data-mode]"), function (c) {
+      setShown(c, c.getAttribute("data-mode") === mode);
+    });
+    [].forEach.call(exbox.querySelectorAll("[data-mode]"), function (c) {
+      setShown(c, c.getAttribute("data-mode") === mode);
+    });
+    btns.forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-mode") === mode ? "true" : "false");
+    });
+  }
+  btns.forEach(function (b) {
+    b.addEventListener("click", function () { show(b.getAttribute("data-mode")); });
+  });
+  rows.forEach(function (r) {
+    function pick() {
+      var n = r.getAttribute("data-row");
+      var already = r.classList.contains("sel") &&
+                    !panel.querySelector('[data-row="' + n + '"]').hasAttribute("hidden");
+      if (already) { openRow("0"); mark([]); return; }
+      // show() already marks the row this method aims at and opens its note, so there is
+      // nothing to do by hand afterwards
+      if (ROW_MODE[n]) { show(ROW_MODE[n]); return; }
+      mark([n]); openRow(n);
+    }
+    r.addEventListener("click", pick);
+    r.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); }
+    });
+  });
+  show("direct");
+})();
+</script>
+
+<script>
+(function () {
+  var push = document.getElementById("dom-push");
+  if (!push) return;
+  var H = 46;              // a domino's height, and so how far its top reaches as it falls
+  var ANG = 72, STEPS = 8, TICK = 26, FLOOR = 96;
+  var slow = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var timers = [];
+
+  // The four corners are written out directly. Nothing here leans on a transform attribute,
+  // a transform-box or a transform-origin, because those are the parts that differ between
+  // renderers, and a domino that fails to draw is worse than one that draws plainly.
+  var W = 12, DH = 46;
+  function turn(el, a) {
+    var x0 = +el.getAttribute("data-x"), r = a * Math.PI / 180;
+    var c = Math.cos(r), sn = Math.sin(r), out = [];
+    // it turns about its bottom-right corner, the one it actually tips over
+    [[-W, 0], [0, 0], [0, -DH], [-W, -DH]].forEach(function (q) {
+      out.push((x0 + W + q[0]*c - q[1]*sn).toFixed(2) + "," +
+               (FLOOR + q[0]*sn + q[1]*c).toFixed(2));
+    });
+    el.setAttribute("points", out.join(" "));
+  }
+  // Stepped with setTimeout rather than with animation frames: a frame callback has to be
+  // invoked on window or it throws, and it does not run at all in a page that is not being
+  // painted, which makes the fall impossible to test. A few timed steps look the same and
+  // always run.
+  function tip(rect, done) {
+    var n = slow ? 1 : STEPS, i = 0;
+    (function go() {
+      i += 1;
+      var u = i / n;
+      turn(rect, (ANG * u * u).toFixed(2));   // accelerating, the way a real one goes over
+      if (i < n) timers.push(setTimeout(go, TICK));
+      else { rect.classList.add("down"); if (done) done(); }
+    })();
+  }
+  function rowOf(id) {
+    var svg = document.getElementById(id);
+    var rects = [].slice.call(svg.querySelectorAll("polygon"));
+    var xs = rects.map(function (r) { return +r.getAttribute("data-x"); });
+    return {
+      reset: function () {
+        rects.forEach(function (r) { r.classList.remove("down"); turn(r, 0); });
+      },
+      // The first is pushed by hand. After that a domino topples its neighbour only when the
+      // neighbour is inside its reach, so which row falls all the way is worked out here
+      // rather than asserted.
+      fall: function () {
+        var i = 0;
+        (function step() {
+          tip(rects[i], function () {
+            if (i + 1 < rects.length && xs[i + 1] - xs[i] < H) { i += 1; step(); }
+          });
+        })();
+      }
+    };
+  }
+  var rows = [rowOf("dom-good"), rowOf("dom-bad")];
+  function reset() {
+    timers.forEach(clearTimeout); timers = [];
+    rows.forEach(function (r) { r.reset(); });
+  }
+  window.resetDominoes = reset;
+  push.addEventListener("click", function () {
+    reset();
+    rows.forEach(function (r) { r.fall(); });
+  });
+  document.getElementById("dom-reset").addEventListener("click", reset);
+})();
+</script>
+
+<script>
+(function () {
+  var box = document.getElementById("w-conn");
+  if (!box) return;
+  var svg = document.getElementById("conn-svg");
+  var cap = box.querySelector(".cap");
+  var rows = document.getElementById("conn-rows");
+  var heads = [].slice.call(box.querySelectorAll("th.pick"));
+  var cells = [].slice.call(box.querySelectorAll("#tt-conn tbody td[data-col]"));
+  function setShown(el, on) {
+    if (on) el.removeAttribute("hidden"); else el.setAttribute("hidden", "");
+  }
+  function show(k) {
+    [].forEach.call(svg.querySelectorAll("g[data-conn]"), function (g) {
+      setShown(g, g.getAttribute("data-conn") === k);
+    });
+    [cap, rows].forEach(function (host) {
+      [].forEach.call(host.querySelectorAll("[data-conn]"), function (c) {
+        setShown(c, c.getAttribute("data-conn") === k);
+      });
+    });
+    heads.forEach(function (h) {
+      h.setAttribute("aria-pressed", h.getAttribute("data-conn") === k ? "true" : "false");
+    });
+    cells.forEach(function (td) {
+      td.classList.toggle("oncol", td.getAttribute("data-col") === k);
+    });
+  }
+  heads.forEach(function (h) {
+    function pick() { show(h.getAttribute("data-conn")); }
+    h.addEventListener("click", pick);
+    h.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); }
+    });
+  });
+  show("imp");
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var UW = 78, UH = 50;
+
+  function el(n, a) {
+    var e = document.createElementNS(NS, n);
+    for (var k in a) if (a[k] !== null && a[k] !== undefined) e.setAttribute(k, a[k]);
+    return e;
+  }
+  function txt(parent, cls, x, y, s) {
+    var t = el("text", {"class": cls, x: x, y: y, "text-anchor": "middle"});
+    t.textContent = s; parent.appendChild(t); return t;
+  }
+
+  // ---- expressions ----
+  function V(n) { return {t: "var", n: n}; }
+  function N(a) { return {t: "not", a: a}; }
+  function AND() { return {t: "and", xs: [].slice.call(arguments)}; }
+  function OR() { return {t: "or", xs: [].slice.call(arguments)}; }
+  function IMP(a, b) { return {t: "imp", a: a, b: b}; }
+
+  function ev(e, env) {
+    if (e.t === "var") return !!env[e.n];
+    if (e.t === "not") return !ev(e.a, env);
+    if (e.t === "and") return e.xs.every(function (x) { return ev(x, env); });
+    if (e.t === "or")  return e.xs.some(function (x) { return ev(x, env); });
+    return !ev(e.a, env) || ev(e.b, env);          // imp
+  }
+  function prec(e) {
+    return e.t === "var" ? 5 : e.t === "not" ? 4 : e.t === "and" ? 3 : e.t === "or" ? 2 : 1;
+  }
+  function show(e) {
+    function sub(x, p) { var s = show(x); return prec(x) < p ? "(" + s + ")" : s; }
+    if (e.t === "var") return e.n;
+    if (e.t === "not") return "¬" + sub(e.a, 4);
+    if (e.t === "and") return e.xs.map(function (x) { return sub(x, 3); }).join(" ∧ ");
+    if (e.t === "or")  return e.xs.map(function (x) { return sub(x, 2); }).join(" ∨ ");
+    return sub(e.a, 3) + " ⇒ " + sub(e.b, 2);
+  }
+  function not1(e) { return e.t === "not" ? e.a : N(e); }
+  // A circuit has no arrow. An implication is drawn as the parallel pair it already is.
+  function toCircuit(e) {
+    if (e.t === "imp") return OR(not1(toCircuit(e.a)), toCircuit(e.b));
+    if (e.t === "not") return not1(toCircuit(e.a));
+    if (e.t === "and") return {t: "and", xs: e.xs.map(toCircuit)};
+    if (e.t === "or")  return {t: "or",  xs: e.xs.map(toCircuit)};
+    return e;
+  }
+
+  // ---- layout, in grid cells: series adds widths, parallel adds heights ----
+  function measure(e) {
+    var w, h;
+    if (e.t === "var" || (e.t === "not" && e.a.t === "var")) return {w: 1, h: 1};
+    if (e.t === "not") { var c = measure(e.a); return {w: c.w + 1, h: c.h}; }
+    if (e.t === "and") {
+      w = 0; h = 0;
+      e.xs.forEach(function (x) { var m = measure(x); w += m.w; h = Math.max(h, m.h); });
+      return {w: w, h: h};
+    }
+    w = 0; h = 0;
+    e.xs.forEach(function (x) { var m = measure(x); w = Math.max(w, m.w); h += m.h; });
+    return {w: w, h: h};
+  }
+
+  function draw(e, g, x, y, w, h, env) {
+    var py = y + h * UH / 2;
+    var on = ev(e, env);
+    var wc = on ? "wire live" : "wire";
+
+    if (e.t === "var" || (e.t === "not" && e.a.t === "var")) {
+      var name = e.t === "var" ? e.n : "¬" + e.a.n;
+      var cx = x + w * UW / 2;
+      g.appendChild(el("path", {"class": wc, d: "M" + x + " " + py + " H" + (cx - 17)}));
+      g.appendChild(el("path", {"class": wc, d: "M" + (cx + 17) + " " + py + " H" + (x + w * UW)}));
+      g.appendChild(el("circle", {"class": "term", cx: cx - 17, cy: py, r: 3}));
+      g.appendChild(el("circle", {"class": "term", cx: cx + 17, cy: py, r: 3}));
+      // the blade lies on both terminals when the contact conducts, and lifts when it does not
+      g.appendChild(el("path", {
+        "class": on ? "blade live" : "blade",
+        d: on ? "M" + (cx - 17) + " " + py + " L" + (cx + 17) + " " + py
+              : "M" + (cx - 17) + " " + py + " L" + (cx + 13) + " " + (py - 16)
+      }));
+      if (e.t === "not")   // the bar that marks a break contact
+        g.appendChild(el("path", {"class": "nc",
+          d: "M" + (cx + 10) + " " + (py - 9) + " L" + (cx + 10) + " " + (py + 9)}));
+      txt(g, "lab", cx, py - 26, name);
+      return;
+    }
+    if (e.t === "and") {
+      var cx2 = x;
+      e.xs.forEach(function (ch) {
+        var m = measure(ch);
+        draw(ch, g, cx2, y, m.w, h, env);
+        cx2 += m.w * UW;
+      });
+      return;
+    }
+    if (e.t === "or") {
+      var cy = y, ports = [];
+      e.xs.forEach(function (ch) {
+        var m = measure(ch);
+        draw(ch, g, x, cy, w, m.h, env);
+        ports.push(cy + m.h * UH / 2);
+        cy += m.h * UH;
+      });
+      var top = Math.min.apply(null, ports), bot = Math.max.apply(null, ports);
+      g.appendChild(el("path", {"class": wc, d: "M" + x + " " + top + " V" + bot}));
+      g.appendChild(el("path", {"class": wc, d: "M" + (x + w * UW) + " " + top + " V" + bot}));
+      return;
+    }
+    // negation of a whole sub-network: it drives a relay, and we take the relay's break
+    // contact. Drawn the way gate diagrams draw it, as a triangle with a bubble.
+    var m2 = measure(e.a);
+    draw(e.a, g, x, y, m2.w, h, env);
+    var x0 = x + m2.w * UW, x1 = x + w * UW;
+    g.appendChild(el("rect", {"class": "encl", x: x - 7, y: y + 3,
+      width: m2.w * UW + 14, height: h * UH - 6, rx: 8}));
+    g.appendChild(el("path", {"class": wc, d: "M" + x0 + " " + py + " H" + (x0 + 12)}));
+    g.appendChild(el("path", {"class": wc, d: "M" + (x1 - 6) + " " + py + " H" + x1}));
+    g.appendChild(el("path", {"class": "inv",
+      d: "M" + (x0 + 12) + " " + (py - 14) + " L" + (x0 + 12) + " " + (py + 14) +
+         " L" + (x1 - 16) + " " + py + " Z"}));
+    g.appendChild(el("circle", {"class": "inv", cx: x1 - 11, cy: py, r: 5}));
+  }
+
+  // ---- the frame: battery on the left, network across the top, lamp on the right ----
+  function circuit(expr, env, label) {
+    var e = toCircuit(expr), m = measure(e);
+    var NX = 62, NY = 24, NW = m.w * UW, NH = m.h * UH;
+    var py = NY + NH / 2;
+    var lampX = NX + NW + 56, rightX = lampX + 40, botY = NY + NH + 44;
+    var by = (py + botY) / 2;
+    var lit = ev(e, env);
+    var wc = lit ? "wire live" : "wire";
+    var VW = rightX + 24, VH = botY + 22;
+    // width and height as well as the viewBox: without them the circuit stretches to the
+    // column and its labels scale with it, so two circuits side by side disagree about type size
+    var svg = el("svg", {viewBox: "0 0 " + VW + " " + VH, width: VW, height: VH,
+      role: "img", "aria-label": label + ": the lamp is " + (lit ? "on" : "off")});
+    svg.appendChild(el("path", {"class": wc, d: "M30 " + py + " H" + NX}));
+    var g = el("g", {}); svg.appendChild(g);
+    draw(e, g, NX, NY, m.w, m.h, env);
+    svg.appendChild(el("path", {"class": wc,
+      d: "M" + (NX + NW) + " " + py + " H" + (lampX - 18)}));
+    svg.appendChild(el("circle", {"class": lit ? "lamp on" : "lamp", cx: lampX, cy: py, r: 18}));
+    svg.appendChild(el("path", {"class": lit ? "lampx on" : "lampx",
+      d: "M" + (lampX - 12) + " " + (py - 12) + " L" + (lampX + 12) + " " + (py + 12) +
+         " M" + (lampX + 12) + " " + (py - 12) + " L" + (lampX - 12) + " " + (py + 12)}));
+    svg.appendChild(el("path", {"class": wc,
+      d: "M" + (lampX + 18) + " " + py + " H" + rightX + " V" + botY + " H30"}));
+    svg.appendChild(el("path", {"class": wc, d: "M30 " + py + " V" + (by - 7)}));
+    svg.appendChild(el("path", {"class": wc, d: "M30 " + (by + 5) + " V" + botY}));
+    svg.appendChild(el("path", {"class": "batt", d: "M16 " + (by - 7) + " H44"}));
+    svg.appendChild(el("path", {"class": "batt", d: "M23 " + (by + 5) + " H37"}));
+    return svg;
+  }
+
+  function put(id, expr, env, label) {
+    var host = document.getElementById(id);
+    if (!host) return;
+    host.textContent = "";
+    host.appendChild(circuit(expr, env, label));
+  }
+  function switches(host, names, env, onchange) {
+    host.textContent = "";
+    names.forEach(function (n) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("data-sw", n);
+      b.addEventListener("click", function () { env[n] = !env[n]; onchange(); });
+      host.appendChild(b);
+    });
+  }
+  function paintSwitches(host, env) {
+    [].forEach.call(host.querySelectorAll("button[data-sw]"), function (b) {
+      var n = b.getAttribute("data-sw"), on = !!env[n];
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.textContent = n + (on ? " closed" : " open");
+    });
+  }
+
+  // ======== the three primitives ========
+  (function () {
+    var host = document.getElementById("prim-sw");
+    if (!host) return;
+    var env = {P: true, Q: false};
+    function paint() {
+      paintSwitches(host, env);
+      put("c-and", AND(V("P"), V("Q")), env, "P and Q in series");
+      put("c-or",  OR(V("P"), V("Q")),  env, "P and Q in parallel");
+      put("c-not", N(V("P")),           env, "a break contact for P");
+    }
+    switches(host, ["P", "Q"], env, paint);
+    paint();
+  })();
+
+  // ======== the circuit for an implication, in the box "a circuit for =>" ========
+  // The box says that P => Q is drawn as the circuit for not-P or Q; this draws it, with its own switches.
+  (function () {
+    var host = document.getElementById("imp-sw");
+    if (!host) return;
+    var env = {P: true, Q: false};
+    function paint() {
+      paintSwitches(host, env);
+      put("c-imp", IMP(V("P"), V("Q")), env, "P implies Q, drawn as not P or Q");
+    }
+    switches(host, ["P", "Q"], env, paint);
+    paint();
+  })();
+
+  // ======== the equivalence checker ========
+  (function () {
+    var sel = document.getElementById("eq-sel");
+    if (!sel) return;
+    var PAIRS = [
+      {a: IMP(V("P"), V("Q")), b: IMP(N(V("Q")), N(V("P"))),
+       note: "a statement and its contrapositive"},
+      {a: IMP(V("P"), V("Q")), b: IMP(N(V("P")), N(V("Q"))),
+       note: "a statement and the usual mistake"},
+      {a: N(AND(V("P"), V("Q"))), b: OR(N(V("P")), N(V("Q"))),
+       note: "De Morgan, first law"},
+      {a: N(OR(V("P"), V("Q"))), b: AND(N(V("P")), N(V("Q"))),
+       note: "De Morgan, second law"},
+      {a: N(AND(V("P"), V("Q"))), b: AND(N(V("P")), N(V("Q"))),
+       note: "De Morgan, misremembered"}
+    ];
+    PAIRS.forEach(function (p, i) {
+      var o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = show(p.a) + "   against   " + show(p.b);
+      sel.appendChild(o);
+    });
+
+    var ROWS = [{P: true, Q: true}, {P: true, Q: false},
+                {P: false, Q: true}, {P: false, Q: false}];
+    var pair = PAIRS[0], env = {P: true, Q: true}, at = -1, timer = null;
+    // once the walk has settled the question there is nothing left to look at, so
+    // further steps do nothing: a counterexample ends the search
+    var done = false;
+    var swHost = document.getElementById("eq-sw");
+    var trace = document.getElementById("eq-trace");
+    var verdict = document.getElementById("eq-verdict");
+
+    function cell(v) { return '<td class="' + (v ? "T" : "F") + '">' + (v ? "T" : "F") + "</td>"; }
+
+    // a statement with => in it is drawn by the idea of the box "a circuit for =>", and says so
+    function usesImp(e) {
+      return e.t === "imp" || (!!e.a && usesImp(e.a)) || (!!e.b && usesImp(e.b)) || (e.xs || []).some(usesImp);
+    }
+    function head(id, e) {
+      var h = document.getElementById(id), drawn = show(toCircuit(e));
+      h.textContent = show(e);
+      if (drawn !== h.textContent) {
+        var sp = document.createElement("span");
+        sp.className = "as"; sp.textContent = "drawn as " + drawn;
+        if (usesImp(e)) {
+          sp.appendChild(document.createTextNode(", using the idea in "));
+          var ln = document.createElement("a");
+          ln.href = "#no-switch"; ln.textContent = "a circuit for \u21D2";
+          sp.appendChild(ln);
+        }
+        h.appendChild(sp);
+      }
+    }
+    function paint() {
+      paintSwitches(swHost, env);
+      head("eq-h1", pair.a);
+      head("eq-h2", pair.b);
+      put("eq-c1", pair.a, env, show(pair.a));
+      put("eq-c2", pair.b, env, show(pair.b));
+    }
+    function header() {
+      // each lamp's column names the statement it lights for
+      trace.innerHTML = "<thead><tr><th>P</th><th>Q</th><th>lamp 1 (" + show(pair.a) + ")</th>" +
+        "<th>lamp 2 (" + show(pair.b) + ")</th><th>agree?</th></tr></thead><tbody></tbody>";
+    }
+    function reset() {
+      stop(); at = -1; done = false; header();
+      verdict.textContent = ""; verdict.className = "verdict";
+      env.P = true; env.Q = true; paint();
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    // one row of the walk; returns true when the walk is over
+    function step() {
+      if (done) return true;
+      if (at >= ROWS.length - 1) { finish(); return true; }
+      at += 1;
+      var r = ROWS[at];
+      env.P = r.P; env.Q = r.Q;
+      paint();
+      var v1 = ev(pair.a, env), v2 = ev(pair.b, env);
+      var tr = document.createElement("tr");
+      tr.innerHTML = cell(r.P) + cell(r.Q) + cell(v1) + cell(v2) +
+        '<td class="' + (v1 === v2 ? "T" : "F") + '">' + (v1 === v2 ? "yes" : "no") + "</td>";
+      if (v1 !== v2) tr.className = "bad";
+      trace.querySelector("tbody").appendChild(tr);
+      if (v1 !== v2) {
+        stop(); done = true;
+        verdict.className = "verdict no";
+        verdict.innerHTML = "Not equivalent." +
+          '<span class="why">With P ' + (r.P ? "closed" : "open") + " and Q " +
+          (r.Q ? "closed" : "open") + ", one lamp is on and the other is off. " +
+          "One row is enough, so the check stops here.</span>";
+        return true;
+      }
+      if (at === ROWS.length - 1) { finish(); return true; }
+      return false;
+    }
+    function finish() {
+      stop(); done = true;
+      if (verdict.className.indexOf("no") >= 0) return;
+      verdict.className = "verdict yes";
+      verdict.innerHTML = "Equivalent." +
+        '<span class="why">The lamps agreed on all ' + ROWS.length +
+        " combinations, so the two statements are true in exactly the same circumstances.</span>";
+    }
+    function run() {
+      reset();
+      timer = setInterval(function () { if (step()) stop(); }, 850);
+    }
+
+    sel.addEventListener("change", function () { pair = PAIRS[+sel.value]; reset(); });
+    document.getElementById("eq-run").addEventListener("click", run);
+    document.getElementById("eq-step").addEventListener("click", function () { stop(); step(); });
+    document.getElementById("eq-reset").addEventListener("click", reset);
+    switches(swHost, ["P", "Q"], env, function () { stop(); paint(); });
+    reset();
+  })();
+})();
+</script>
+</body>
+</html>

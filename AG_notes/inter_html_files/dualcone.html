@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Cone Visualiser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <style>
+        :root {
+            --c-h1: #f97316;            /* orange-500 */
+            --c-h1-deep: #c2410c;       /* orange-700 */
+            --c-h2: #6b8e23;            /* olive */
+            --c-h2-deep: #4d6b14;       /* deep olive */
+            --c-dual: #14b8a6;          /* teal-500 */
+            --c-dual-deep: #0f766e;     /* teal-700 */
+            --c-v1: #c2410c;
+            --c-v2: #4d6b14;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        canvas { display: block; cursor: crosshair; }
+        .controls {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            border-radius: 10px;
+            box-shadow:
+                0 6px 16px -4px rgb(0 0 0 / 0.1),
+                0 0 0 1px rgb(15 23 42 / 0.04);
+            width: 320px;
+            z-index: 10;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        .controls.collapsed { height: 34px; width: 200px; }
+        #collapse-btn {
+            cursor: pointer;
+            user-select: none;
+            padding: 6px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.2s ease;
+        }
+        #collapse-btn:hover { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); }
+        .controls.collapsed #collapse-btn { border-bottom: 1px solid transparent; }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .colour-swatch {
+            width: 14px;
+            height: 14px;
+            margin-right: 10px;
+            border-radius: 4px;
+            box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.08);
+            flex-shrink: 0;
+        }
+        .swatch-h1 { background: linear-gradient(135deg, var(--c-h1) 0%, var(--c-h1-deep) 100%); }
+        .swatch-h2 { background: linear-gradient(135deg, var(--c-h2) 0%, var(--c-h2-deep) 100%); }
+        .swatch-dual { background: linear-gradient(135deg, var(--c-dual) 0%, var(--c-dual-deep) 100%); }
+        .label-text {
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #334155;
+            white-space: nowrap;
+        }
+        .label-text mjx-container { display: inline !important; }
+        .label-text.bold { font-weight: 700; color: var(--c-dual-deep); }
+    </style>
+</head>
+<body>
+
+<div class="controls" id="controls-panel">
+    <div id="collapse-btn">
+        <h1 class="text-[11px] font-bold text-slate-600 uppercase tracking-[0.14em]">Dual Cone Visualiser</h1>
+        <span id="arrow" class="text-[10px] text-slate-400">▼</span>
+    </div>
+
+    <div class="p-2">
+        <div class="legend-row">
+            <div class="colour-swatch swatch-h1"></div>
+            <span class="label-text">$H_{v_1}^{+} = \{u \mid \langle u, v_1 \rangle \geq 0\}$</span>
+        </div>
+        <div class="legend-row">
+            <div class="colour-swatch swatch-h2"></div>
+            <span class="label-text">$H_{v_2}^{+} = \{u \mid \langle u, v_2 \rangle \geq 0\}$</span>
+        </div>
+        <div class="legend-row">
+            <div class="colour-swatch swatch-dual"></div>
+            <span class="label-text bold">Dual cone $\sigma^{\vee}$ (intersection)</span>
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const COLOURS = {
+        h1: '#f97316', h1Deep: '#c2410c',
+        h2: '#6b8e23', h2Deep: '#4d6b14',
+        dual: '#14b8a6', dualDeep: '#0f766e',
+        v1: '#c2410c', v2: '#4d6b14',
+        grid: '#f1f5f9', axis: '#e2e8f0'
+    };
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const panel = document.getElementById('controls-panel');
+    const arrow = document.getElementById('arrow');
+    const collapseBtn = document.getElementById('collapse-btn');
+
+    let width, height, centreX, centreY;
+    const scale = 100;
+
+    let v1 = { x: 1.2, y: 0.4 };
+    let v2 = { x: 0.3, y: 1.3 };
+
+    let dragging = null;
+    const hitRadius = 25;
+
+    collapseBtn.addEventListener('click', () => {
+        panel.classList.toggle('collapsed');
+        arrow.textContent = panel.classList.contains('collapsed') ? '▲' : '▼';
+    });
+
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        centreX = width / 2;
+        centreY = height / 2;
+        draw();
+    }
+
+    function toScreen(x, y) {
+        return { x: centreX + x * scale, y: centreY - y * scale };
+    }
+
+    function fromScreen(x, y) {
+        return { x: (x - centreX) / scale, y: (centreY - y) / scale };
+    }
+
+    function drawVector(v, colour, label) {
+        const p = toScreen(v.x, v.y);
+        const origin = toScreen(0, 0);
+
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        const angle = Math.atan2(origin.y - p.y, origin.x - p.x);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + 14 * Math.cos(angle - 0.4), p.y + 14 * Math.sin(angle - 0.4));
+        ctx.lineTo(p.x + 14 * Math.cos(angle + 0.4), p.y + 14 * Math.sin(angle + 0.4));
+        ctx.closePath();
+        ctx.fillStyle = colour;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = colour;
+        ctx.font = 'bold 22px "Cambria Math", "Times New Roman", serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lx = p.x + Math.cos(angle + Math.PI) * 28;
+        const ly = p.y + Math.sin(angle + Math.PI) * 28;
+        ctx.fillText(label, lx, ly);
+    }
+
+    function getNormal(v) {
+        return { x: -v.y, y: v.x };
+    }
+
+    function drawConeRegion(vec1, vec2, fill, stroke, alpha) {
+        const origin = toScreen(0, 0);
+        const p1 = toScreen(vec1.x * 30, vec1.y * 30);
+        const p2 = toScreen(vec2.x * 30, vec2.y * 30);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+        if (stroke) {
+            ctx.globalAlpha = 0.7;
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawDualHalfSpace(v, fill, alpha) {
+        const n = getNormal(v);
+        const L1 = toScreen(n.x * 50, n.y * 50);
+        const L2 = toScreen(-n.x * 50, -n.y * 50);
+        const P = toScreen(v.x * 50, v.y * 50);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(L1.x, L1.y);
+        ctx.lineTo(L2.x, L2.y);
+        ctx.lineTo(P.x, P.y);
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Grid
+        ctx.strokeStyle = COLOURS.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = -20; i <= 20; i++) {
+            let s = toScreen(i, -20); let e = toScreen(i, 20);
+            ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y);
+            s = toScreen(-20, i); e = toScreen(20, i);
+            ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y);
+        }
+        ctx.stroke();
+
+        // Axes
+        ctx.strokeStyle = COLOURS.axis;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(0, centreY); ctx.lineTo(width, centreY);
+        ctx.moveTo(centreX, 0); ctx.lineTo(centreX, height);
+        ctx.stroke();
+
+        const n1 = getNormal(v1);
+        const n2 = getNormal(v2);
+
+        // Half-spaces
+        drawDualHalfSpace(v1, COLOURS.h1, 0.18);
+        drawDualHalfSpace(v2, COLOURS.h2, 0.18);
+
+        // Dual cone (intersection)
+        let d1 = { x: n1.x, y: n1.y };
+        if (d1.x * v2.x + d1.y * v2.y < -0.0001) { d1.x *= -1; d1.y *= -1; }
+
+        let d2 = { x: n2.x, y: n2.y };
+        if (d2.x * v1.x + d2.y * v1.y < -0.0001) { d2.x *= -1; d2.y *= -1; }
+
+        drawConeRegion(d1, d2, COLOURS.dual, COLOURS.dualDeep, 0.5);
+
+        // Spanning vectors
+        drawVector(v1, COLOURS.v1, 'v₁');
+        drawVector(v2, COLOURS.v2, 'v₂');
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const mouse = fromScreen(e.clientX, e.clientY);
+        const d1 = Math.hypot(mouse.x - v1.x, mouse.y - v1.y) * scale;
+        const d2 = Math.hypot(mouse.x - v2.x, mouse.y - v2.y) * scale;
+
+        if (d1 < hitRadius) dragging = 'v1';
+        else if (d2 < hitRadius) dragging = 'v2';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const mouse = fromScreen(e.clientX, e.clientY);
+        if (Math.hypot(mouse.x, mouse.y) < 0.1) return;
+        if (dragging === 'v1') v1 = mouse;
+        else if (dragging === 'v2') v2 = mouse;
+        draw();
+    });
+
+    window.addEventListener('mouseup', () => { dragging = null; });
+    window.addEventListener('resize', resize);
+    resize();
+</script>
+
+</body>
+</html>

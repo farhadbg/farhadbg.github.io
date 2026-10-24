@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blow-up of Singularities</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+    <script src="diagram-scroll.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen w-screen overflow-hidden">
+    <div id="root" class="h-full w-full"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Pinned to Babel 7: Babel 8 turns the env,react presets below into import statements,
+         which a plain browser script cannot run, and the diagram stayed blank. -->
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+    <script type="text/babel" data-presets="env,react">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        const Ic = ({children, className, ...p}) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>{children}</svg>
+        );
+        const ArrowUpFromLine = (p) => <Ic {...p}><path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/></Ic>;
+        const ArrowDownToLine = (p) => <Ic {...p}><path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/></Ic>;
+        const GitBranch = (p) => <Ic {...p}><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></Ic>;
+        const AlertTriangle = (p) => <Ic {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></Ic>;
+
+        const ANIMATION_SPEED = 0.05;
+
+        const Curves = {
+            nodal: {
+                name: "Nodal Cubic (Alpha)",
+                eq: "y\u00B2 = x\u00B2 + x\u00B3",
+                getPoint: (t) => {
+                    const x = t * t - 1;
+                    const y = t * (t * t - 1);
+                    return { x, y, z: t };
+                },
+                range: [-1.8, 1.8]
+            },
+            cuspidal: {
+                name: "Cuspidal Cubic",
+                eq: "y\u00B2 = x\u00B3",
+                getPoint: (t) => {
+                    const x = t * t;
+                    const y = t * t * t;
+                    return { x, y, z: t };
+                },
+                range: [-1.5, 1.5]
+            }
+        };
+
+        const ThreeScene = ({ isBlownUp, curveType }) => {
+            const mountRef = useRef(null);
+            const sceneRef = useRef(null);
+            const curveMeshRef = useRef(null);
+            const pointsRef = useRef({ points2D: [], points3D: [] });
+            const progressRef = useRef(0);
+            const stopAnimationRef = useRef(null);
+            const isBlownUpRef = useRef(isBlownUp);
+
+            useEffect(() => {
+                isBlownUpRef.current = isBlownUp;
+            }, [isBlownUp]);
+
+            const generateData = () => {
+                const curve = Curves[curveType];
+                const segments = 800;
+                const points2D = [];
+                const points3D = [];
+                const dt = (curve.range[1] - curve.range[0]) / segments;
+
+                for (let i = 0; i <= segments; i++) {
+                    const t = curve.range[0] + i * dt;
+                    const p = curve.getPoint(t);
+                    points2D.push({ x: p.x, y: p.y, z: 0.02 });
+                    points3D.push({ x: p.x, y: p.y, z: p.z });
+                }
+                return { points2D, points3D };
+            };
+
+            useEffect(() => {
+                const loadThree = async () => {
+                    if (!window.THREE) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+                            script.onload = () => {
+                                const controlsScript = document.createElement('script');
+                                controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+                                controlsScript.onload = resolve;
+                                controlsScript.onerror = reject;
+                                document.body.appendChild(controlsScript);
+                            };
+                            script.onerror = reject;
+                            document.body.appendChild(script);
+                        });
+                    }
+                    init();
+                };
+
+                loadThree();
+
+                function init() {
+                    if (!mountRef.current || sceneRef.current) return;
+                    const THREE = window.THREE;
+
+                    const width = mountRef.current.clientWidth;
+                    const height = mountRef.current.clientHeight;
+
+                    const scene = new THREE.Scene();
+                    scene.background = new THREE.Color(0x0f172a);
+                    scene.fog = new THREE.Fog(0x0f172a, 5, 25);
+
+                    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+                    camera.position.set(4, -5, 4);
+                    camera.up.set(0, 0, 1);
+
+                    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                    renderer.setSize(width, height);
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    mountRef.current.appendChild(renderer.domElement);
+
+                    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    zoomOnlyOnGesture(renderer.domElement);
+                    controls.target.set(0, 0, 0);
+
+                    // Grid
+                    const gridHelper = new THREE.GridHelper(10, 20, 0x475569, 0x1e293b);
+                    gridHelper.rotation.x = Math.PI / 2;
+                    scene.add(gridHelper);
+
+                    // Plane
+                    const planeMat = new THREE.MeshBasicMaterial({
+                        color: 0x1e293b, transparent: true, opacity: 0.5,
+                        side: THREE.DoubleSide, depthWrite: false
+                    });
+                    const planeGeom = new THREE.PlaneGeometry(10, 10);
+                    scene.add(new THREE.Mesh(planeGeom, planeMat));
+
+                    // Exceptional Fiber (Z-Axis)
+                    const axisGeom = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(0, 0, -5), new THREE.Vector3(0, 0, 5)
+                    ]);
+                    const axisMat = new THREE.LineDashedMaterial({
+                        color: 0xec4899, dashSize: 0.2, gapSize: 0.1, opacity: 0.6, transparent: true
+                    });
+                    const axisLine = new THREE.Line(axisGeom, axisMat);
+                    axisLine.computeLineDistances();
+                    scene.add(axisLine);
+
+                    // Curve — use a thick tube geometry for visibility
+                    const curvePathPoints = [];
+                    const data = generateData();
+                    pointsRef.current = data;
+                    for (let i = 0; i < data.points2D.length; i++) {
+                        curvePathPoints.push(new THREE.Vector3(data.points2D[i].x, data.points2D[i].y, data.points2D[i].z));
+                    }
+
+                    // Create a thick curve using TubeGeometry
+                    const curvePath = new THREE.CatmullRomCurve3(curvePathPoints);
+                    const tubeGeom = new THREE.TubeGeometry(curvePath, 800, 0.04, 8, false);
+                    const tubeMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
+                    const tubeMesh = new THREE.Mesh(tubeGeom, tubeMat);
+                    tubeMesh.renderOrder = 1;
+                    scene.add(tubeMesh);
+                    curveMeshRef.current = tubeMesh;
+
+                    sceneRef.current = { scene, camera, renderer, controls, THREE };
+
+                    const animate = () => {
+                        const target = isBlownUpRef.current ? 1 : 0;
+                        if (Math.abs(progressRef.current - target) > 0.001) {
+                            progressRef.current += (target - progressRef.current) * ANIMATION_SPEED;
+                        } else {
+                            progressRef.current = target;
+                        }
+
+                        // Update tube geometry by rebuilding
+                        if (curveMeshRef.current && pointsRef.current.points2D.length > 0) {
+                            const p2d = pointsRef.current.points2D;
+                            const p3d = pointsRef.current.points3D;
+                            const t = progressRef.current;
+
+                            const pts = [];
+                            for (let i = 0; i < p2d.length; i++) {
+                                pts.push(new THREE.Vector3(
+                                    p2d[i].x,
+                                    p2d[i].y,
+                                    p2d[i].z + (p3d[i].z - p2d[i].z) * t
+                                ));
+                            }
+                            const path = new THREE.CatmullRomCurve3(pts);
+                            const newGeom = new THREE.TubeGeometry(path, 800, 0.04, 8, false);
+                            curveMeshRef.current.geometry.dispose();
+                            curveMeshRef.current.geometry = newGeom;
+                        }
+
+                        controls.update();
+                        renderer.render(scene, camera);
+                    };
+                    stopAnimationRef.current = animateWhileVisible(renderer.domElement, animate);
+                }
+
+                return () => {
+                    if (stopAnimationRef.current) stopAnimationRef.current();
+                    if (mountRef.current && sceneRef.current) {
+                        mountRef.current.innerHTML = '';
+                    }
+                };
+            }, []);
+
+            useEffect(() => {
+                if (!sceneRef.current) return;
+                const THREE = window.THREE;
+                const data = generateData();
+                pointsRef.current = data;
+            }, [curveType]);
+
+            return <div ref={mountRef} className="w-full h-full" />;
+        };
+
+        const App = () => {
+            const [isBlownUp, setIsBlownUp] = useState(false);
+            const [curveType, setCurveType] = useState('nodal');
+
+            return (
+                <div className="relative w-full h-full">
+                    <div className="absolute inset-0 z-0">
+                        <ThreeScene isBlownUp={isBlownUp} curveType={curveType} />
+                    </div>
+
+                    <div className="absolute top-0 right-0 p-4 sm:p-6 z-10 pointer-events-none">
+                        <div className="flex bg-slate-800/90 rounded-full p-1 border border-slate-600 backdrop-blur-md shadow-lg pointer-events-auto">
+                            <button
+                                onClick={() => setCurveType('nodal')}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${curveType === 'nodal' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                <GitBranch className="w-4 h-4" /> Nodal Cubic
+                            </button>
+                            <button
+                                onClick={() => setCurveType('cuspidal')}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${curveType === 'cuspidal' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                <AlertTriangle className="w-4 h-4" /> Cuspidal Cubic
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="absolute top-20 right-0 p-4 sm:p-6 z-10 pointer-events-none">
+                         <div className="flex flex-col gap-2 pointer-events-auto items-end">
+                             <div className="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-sm">
+                                <div className="w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                                <span className="text-xs text-slate-200 font-mono">
+                                    {Curves[curveType].eq}
+                                </span>
+                             </div>
+                             <div className="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-sm">
+                                <div className="w-3 h-3 border-l border-pink-500 border-dashed h-4 w-0 mx-1.5" />
+                                <span className="text-xs text-pink-300 font-mono">Exceptional Fiber (x=0)</span>
+                             </div>
+                         </div>
+                    </div>
+
+                    <div className="absolute top-0 left-0 p-4 sm:p-6 z-10 pointer-events-none">
+                        <button
+                            onClick={() => setIsBlownUp(!isBlownUp)}
+                            className={`
+                                pointer-events-auto flex items-center gap-3 px-6 py-3 rounded-full font-bold text-base shadow-2xl transition-all transform active:scale-95 border
+                                ${isBlownUp
+                                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-400 ring-2 ring-indigo-500/50'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 ring-2 ring-emerald-500/50'}
+                            `}
+                        >
+                            {isBlownUp ? <ArrowDownToLine className="w-5 h-5" /> : <ArrowUpFromLine className="w-5 h-5" />}
+                            {isBlownUp ? "Project Down (\u211D\u00B2)" : "Blow Up (\u211D\u00B3)"}
+                        </button>
+                    </div>
+
+                    <div className="absolute bottom-4 left-0 w-full px-4 z-10 pointer-events-none flex justify-center">
+                         <div className="bg-slate-900/80 p-5 rounded-2xl backdrop-blur-md border border-slate-700/50 shadow-2xl pointer-events-auto max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 items-center gap-6">
+                            <div>
+                                <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-1 drop-shadow-md">
+                                    Blow-up of a Singularity
+                                </h1>
+                                <p className="text-slate-300 text-sm leading-relaxed">
+                                    Resolving singularities by mapping the plane <span className="font-serif italic">{"\u211D\u00B2"}</span> to a surface in <span className="font-serif italic">{"\u211D\u00B3"}</span>.
+                                </p>
+                            </div>
+                            <div className="text-sm text-slate-400 border-t md:border-t-0 md:border-l border-slate-700 pt-3 md:pt-0 md:pl-6 leading-relaxed">
+                                The origin (0,0) is replaced by the <span className="text-pink-400 font-bold">vertical Z-axis</span>. Each height on this axis represents a different slope through the origin.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

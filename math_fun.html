@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Linear Algebra — Visualisations and Games | Farhad Babaee</title>
+  <meta name="description" content="A collection of interactive linear algebra visualisations: Gaussian elimination, determinants, change of basis, eigenvalues, PCA, gradient descent, and more.">
+  <meta name="keywords" content="interactive linear algebra, Gaussian elimination, determinant, change of basis, eigenvalues, eigenvectors, PCA, gradient descent, linear algebra visualisation, Farhad Babaee, University of Bristol, math fun">
+  <meta name="author" content="Farhad Babaee">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://people.maths.bris.ac.uk/~ki18754/math_fun.html">
+  <meta property="og:title" content="Interactive Linear Algebra — Visualisations and Games">
+  <meta property="og:description" content="Interactive linear algebra: Gaussian elimination, determinants, eigenvalues, PCA, gradient descent — and more, all in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://people.maths.bris.ac.uk/~ki18754/math_fun.html">
+  <meta property="og:site_name" content="Farhad Babaee — University of Bristol">
+  <meta property="og:locale" content="en_GB">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Interactive Linear Algebra — Visualisations and Games">
+  <meta name="twitter:description" content="Interactive linear algebra visualisations and games by Farhad Babaee, University of Bristol.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LearningResource",
+    "name": "Interactive Linear Algebra — Visualisations and Games",
+    "url": "https://people.maths.bris.ac.uk/~ki18754/math_fun.html",
+    "description": "Interactive visualisations and games covering Gaussian elimination, determinants, change of basis, eigenvalues, PCA, gradient descent, and more.",
+    "inLanguage": "en-GB",
+    "educationalLevel": "Undergraduate",
+    "learningResourceType": "Interactive Visualisation",
+    "teaches": ["Linear Algebra", "Gaussian Elimination", "Determinants", "Eigenvalues", "Principal Component Analysis", "Gradient Descent"],
+    "isPartOf": { "@type": "WebSite", "name": "Farhad Babaee — University of Bristol", "url": "https://people.maths.bris.ac.uk/~ki18754/" },
+    "author": { "@type": "Person", "name": "Farhad Babaee", "url": "https://people.maths.bris.ac.uk/~ki18754/index.html" }
+  }
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="bootstrap.css">
+  <link rel="stylesheet" href="Main.css">
+
+  <style>
+    :root {
+      --ink: #0f172a;
+      --accent: #b91c1c;
+      --accent2: #166534;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(22,101,52,.08), transparent 65%),
+        radial-gradient(900px 700px at 80% 20%, rgba(185,28,28,.08), transparent 60%),
+        linear-gradient(180deg, #fbfdff 0%, #f6fbff 55%, #f7fbf7 100%);
+      overflow-x: hidden;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,.7);
+      border-bottom: 1px solid rgba(226,232,240,.8);
+    }
+
+    .frame-section {
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .frame-card {
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 22px;
+      background: rgba(255,255,255,.72);
+      box-shadow: 0 10px 25px rgba(2,6,23,.06);
+      overflow: hidden;
+    }
+
+    .frame-card iframe {
+      border: none;
+      width: 100%;
+      height: 82vh;
+      min-height: 600px;
+      display: block;
+    }
+
+    .frame-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px;
+      border-bottom: 1px solid rgba(226,232,240,.6);
+      background: rgba(255,255,255,.5);
+    }
+
+    .frame-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--ink);
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .frame-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .expand-btn {
+      border: 1px solid rgba(226,232,240,.9);
+      background: rgba(255,255,255,.86);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s ease;
+      flex-shrink: 0;
+    }
+    .expand-btn:hover { background: rgba(241,245,249,.9); }
+
+    dialog::backdrop { background: rgba(2,6,23,.35); }
+    dialog {
+      width: min(920px, calc(100vw - 24px));
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: 22px;
+      box-shadow: 0 24px 60px rgba(2,6,23,.12);
+      padding: 0;
+      overflow: hidden;
+      background: rgba(255,255,255,.9);
+    }
+
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 40;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(226,232,240,.9);
+      background: rgba(255,255,255,.9);
+      box-shadow: 0 8px 20px rgba(2,6,23,.1);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 18px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .2s ease, transform .2s ease;
+      pointer-events: none;
+    }
+    .back-to-top.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="mx-auto max-w-[1320px] px-3 py-3">
+      <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center sm:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-white shadow-sm border border-slate-200 grid place-items-center">
+            <span class="text-xl">📘</span>
+          </div>
+          <div>
+            <div class="text-sm text-slate-600">Interactive</div>
+            <div class="text-lg font-extrabold tracking-tight">Linear Algebra</div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 items-center">
+          <button id="openToc" class="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold">Contents</button>
+        </div>
+      </div>
+
+      <nav aria-label="Site navigation">
+        <div class="container">
+          <ul class="nav nav-pills">
+            <li><a href="index.html">Home</a></li>
+            <!-- <li><a href="News_Talks.html">News/Talks</a></li> -->
+            <li><a href="Publications.html">Research</a></li>
+            <li><a href="Teaching.html">Teaching</a></li>
+            <li class="active"><a href="math_fun.html" aria-current="page">Math Fun!</a></li>
+            <li><a href="RSA-outreach/RSA-outreach.html">RSA Crypto</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="frames" class="py-8 flex flex-col gap-10">
+  </main>
+
+  <dialog id="tocDialog">
+    <div class="p-5 sm:p-6 border-b border-slate-200 flex items-center justify-between gap-3">
+      <div>
+        <div class="text-sm text-slate-600">Jump to a section</div>
+        <div class="text-xl font-extrabold tracking-tight">Contents</div>
+      </div>
+      <div class="flex gap-2">
+        <button id="closeToc" class="expand-btn">Close</button>
+      </div>
+    </div>
+    <div class="p-5 sm:p-6">
+      <ol id="tocList" class="grid sm:grid-cols-2 gap-3"></ol>
+    </div>
+  </dialog>
+
+  <button class="back-to-top" id="topBtn" aria-label="Back to top">↑</button>
+
+<script>
+  const spreads = [
+    { title: "Base Change", src: "inter_html_files/base_change.html?embed=1" },
+    { title: "RREF or Nah", src: "inter_html_files/rref%20game/rref.html?embed=1" },
+    { title: "Visualising Gaussian Elimination", src: "inter_html_files/rref%20game/re-ops.html?embed=1" },
+    { title: "Determinant", src: "inter_html_files/determinant.html?embed=1" },
+    { title: "Change of Basis", src: "inter_html_files/change-basis.html?embed=1" },
+    { title: "Projection", src: "inter_html_files/proj-ev.html?embed=1" },
+    { title: "PCA", src: "inter_html_files/pca.html?embed=1" },
+    { title: "Permutation Matrix", src: "inter_html_files/permutation_matrix.html?embed=1" },
+    { title: "Gradient Descent", src: "inter_html_files/gradient.html?embed=1" },
+    { title: "Smooth or Singular?", src: "inter_html_files/tangent.html?embed=1" },
+    { title: "Blow-up of Singularities", src: "inter_html_files/blow-up.html?embed=1" }
+  ];
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[s]));
+  }
+
+  // Build all frames
+  const framesContainer = document.getElementById('frames');
+
+  spreads.forEach((item, i) => {
+    const section = document.createElement('section');
+    section.id = `s${i + 1}`;
+    section.className = 'frame-section';
+    section.innerHTML = `
+      <div class="frame-card">
+        <div class="frame-header">
+          <div class="flex items-center gap-3">
+            <span class="frame-number">${i + 1}</span>
+            <span class="frame-title">${escapeHtml(item.title)}</span>
+          </div>
+          <button class="expand-btn" onclick="toggleFullscreen(this)" data-idx="${i}">⛶ Expand</button>
+        </div>
+        <iframe src="${item.src}" loading="lazy" title="${escapeHtml(item.title)}"></iframe>
+      </div>
+    `;
+    framesContainer.appendChild(section);
+  });
+
+  // Fullscreen toggle
+  function toggleFullscreen(btn) {
+    const card = btn.closest('.frame-card');
+    const iframe = card.querySelector('iframe');
+    if (iframe.requestFullscreen) {
+      iframe.requestFullscreen();
+    } else if (iframe.webkitRequestFullscreen) {
+      iframe.webkitRequestFullscreen();
+    }
+  }
+
+  // TOC
+  const tocDialog = document.getElementById('tocDialog');
+  const openToc = document.getElementById('openToc');
+  const closeToc = document.getElementById('closeToc');
+  const tocList = document.getElementById('tocList');
+
+  function buildToc() {
+    tocList.innerHTML = '';
+    spreads.forEach((s, i) => {
+      const li = document.createElement('li');
+      li.className = "rounded-2xl border border-slate-200 bg-white/80 p-4 hover:bg-white cursor-pointer";
+      li.innerHTML = `
+        <div class="text-sm text-slate-600">Section ${i + 1}</div>
+        <div class="text-lg font-extrabold tracking-tight">${escapeHtml(s.title)}</div>
+        <div class="mt-3 text-sm font-semibold text-[color:var(--accent2)]">Jump →</div>
+      `;
+      li.addEventListener('click', () => {
+        tocDialog.close();
+        document.getElementById(`s${i + 1}`).scrollIntoView({ behavior: 'smooth' });
+        history.replaceState(null, '', `#s${i + 1}`);
+      });
+      tocList.appendChild(li);
+    });
+  }
+  buildToc();
+  openToc.addEventListener('click', () => tocDialog.showModal());
+  closeToc.addEventListener('click', () => tocDialog.close());
+
+  // Hash navigation
+  function applyHash() {
+    const m = (location.hash || '').match(/^#s(\d+)$/);
+    if (!m) return;
+    const n = parseInt(m[1], 10);
+    if (!Number.isFinite(n) || n < 1 || n > spreads.length) return;
+    const el = document.getElementById(`s${n}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  window.addEventListener('hashchange', applyHash);
+  // Delay initial hash scroll slightly to allow iframes to start rendering
+  setTimeout(applyHash, 100);
+
+  // Back-to-top button
+  const topBtn = document.getElementById('topBtn');
+  window.addEventListener('scroll', () => {
+    topBtn.classList.toggle('visible', window.scrollY > 400);
+  });
+  topBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>

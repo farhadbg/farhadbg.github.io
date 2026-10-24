@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Embedded Quiz Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    /* Basic reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Body styling */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      margin: 10px;
+      font-size: 16px; /* Default size (desktop/tablet) */
+    }
+
+    /* Increase font size on phones */
+    @media (max-width: 600px) {
+      body {
+        font-size: 18px;
+      }
+      .modal-content {
+        font-size: 1.1em;
+      }
+      .quiz-button {
+        font-size: 1em;
+      }
+    }
+
+    .centered-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    /* Score text */
+    #scoreDisplay {
+      font-size: 1.1em;
+      margin-bottom: 10px;
+    }
+
+    /* Canvas */
+    #gameCanvas {
+      border: 1px solid #ccc;
+      max-width: 100%;
+    }
+
+    /* Full-screen modals */
+    .modal-overlay {
+      display: none;           /* hidden by default */
+      position: fixed;
+      top: 0; 
+      left: 0;
+      width: 100%; 
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center; /* center the content */
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 6px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      margin: 0 auto;
+    }
+
+    /* Simple button styling for quiz options */
+    .quiz-button {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 16px;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    .quiz-button:hover {
+      background: #0056b3;
+    }
+
+    /* The "Try Again" button in the game over modal */
+    .retry-button {
+      margin-top: 15px;
+      padding: 8px 16px;
+      cursor: pointer;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    .retry-button:hover {
+      background: #1e7e34;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Score Display -->
+  <div class="centered-container">
+    <div id="scoreDisplay">Score: 0</div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="centered-container">
+    <canvas id="gameCanvas" width="600" height="300">
+      Your browser does not support the HTML5 Canvas tag.
+    </canvas>
+  </div>
+
+  <!-- Quiz Modal -->
+  <div id="quizModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2 id="quizQuestion"></h2>
+      <div id="quizOptions"></div>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="gameOverModal" class="modal-overlay">
+    <div class="modal-content">
+      <!-- We'll place the final score and a message. -->
+      <h2>Game Over!</h2>
+      <p id="gameOverScore"></p>
+      <!-- "Try Again" button reloads the page -->
+      <button class="retry-button" onclick="window.location.reload()">Try Again</button>
+    </div>
+  </div>
+
+  <!-- Win Modal -->
+  <div id="winModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Congratulations!</h2>
+      <p>You answered all questions correctly!</p>
+      <p id="finalScoreText"></p>
+    </div>
+  </div>
+
+  <!-- Game and Quiz Script -->
+  <script>
+    // Reference to the canvas and its context
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Game variables
+    let groundLevel = canvas.height - 70;
+    let player = {
+      x: 50,
+      y: groundLevel - 70,
+      width: 60,
+      height: 80,
+      dy: 0,
+      gravity: 1,
+      jumpStrength: 28,
+      onGround: true
+    };
+    let flames = [];
+    let flameSpeed = 3;
+    let gameover = false;
+
+    // Score & quiz tracking
+    let score = 0;
+    let currentQuiz = 0;
+
+    // For spacing new flames
+    let lastFlameX = 0;
+
+    // Helper: return message based on score
+    function getMessageForScore(sc) {
+      if (sc <= 3) return "Keep clawing at it! 🧶🐱";
+      if (sc <= 7) return "That’s some paw-sitive progress!";
+      if (sc <= 10) return "You’ve got claws into varieties!";
+      if (sc <= 15) return "Nice paw-er through, almost purr-fect score!";
+      // If sc == 16:
+      return "You’ve mastered algebraic geo-meow-try deserve a golden whisker!";
+    }
+
+    // Shuffle helper
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    // Quiz Data (16 questions)
+    const quizData = [
+      {
+        question: "What is a variety?",
+        options: shuffle([
+          "Solution set of polynomial equations.",
+          "A map between polynomial functions.",
+          "A polynomial with multiple variables."
+        ]),
+        correct: "Solution set of polynomial equations."
+      },
+      {
+        question: "What is the Zariski topology?",
+        options: shuffle([
+          "Topology whose closed sets are the zeros of polynomials.",
+          "Topology defined by open balls.",
+          "Topology where every subset is open."
+        ]),
+        correct: "Topology whose closed sets are the zeros of polynomials."
+      },
+      {
+        question: "What is a morphism of closed affine algebraic varieties?",
+        options: shuffle([
+          "Map between varieties given by restriction of polynomial maps.",
+          "Map between points at infinity.",
+          "Map of their C-algebras."
+        ]),
+        correct: "Map between varieties given by restriction of polynomial maps."
+      },
+      {
+        question: "Define a closed affine algebraic variety.",
+        options: shuffle([
+          "Variety defined in affine space by polynomials.",
+          "Variety defined at infinity.",
+          "Variety that cannot be decomposed further."
+        ]),
+        correct: "Variety defined in affine space by polynomials."
+      },
+     
+
+      {
+        question: "What is projective space?",
+        options: shuffle([
+          "Affine space with points at infinity.",
+          "Space defined by polynomials only.",
+          "Set of polynomial zeros."
+        ]),
+        correct: "Affine space with points at infinity."
+      },
+      {
+        question: "What does irreducible variety mean?",
+        options: shuffle([
+          "Variety that can't be written as the union of two proper subvarieties.",
+          "Variety defined in projective space.",
+          "Variety having no singular points."
+        ]),
+        correct: "Variety that can't be written as the union of two proper subvarieties."
+      },
+      {
+        question: "What is a regular function?",
+        options: shuffle([
+          "Function locally a fraction of two polynomials.",
+          "Polynomial function at infinity.",
+          "Intersection of polynomial sets."
+        ]),
+        correct: "Function locally a fraction of two polynomials."
+      },
+      {
+        question: "What does Hilbert’s Nullstellensatz say?",
+        options: shuffle([
+          "Ideal of variety of an ideal is the radical of the ideal.",
+          "Analytic and compact subvariety of P^n is algebraic.",
+          "R Noetherian => R[x] Noetherian."
+        ]),
+        correct: "Ideal of variety of an ideal is the radical of the ideal."
+      },
+      {
+        question: "Is the cusp V(y^2 = x^3) singular at origin?",
+        options: shuffle(["Yes", "No", "Only at infinity"]),
+        correct: "Yes"
+      },
+      {
+        question: "What is the blow-up of the cusp y^2 = x^3 in one affine chart?",
+        options: shuffle([
+          "The twisted cubic {(u^2, u^3, u), u ∈ C}",
+          "{(u^2 - 1, (u^2 - 1)u, u), u ∈ C}",
+          "Intersection with line at infinity"
+        ]),
+        correct: "The twisted cubic {(u^2, u^3, u), u ∈ C}"
+      },
+      {
+        question: "What is P^1? (over C)",
+        options: shuffle([
+          "Complex line with a point at infinity.",
+          "Two copies of the complex line glued by x -> 1/x.",
+          "Both options."
+        ]),
+        correct: "Both options."
+      },
+      {
+        question: "Which variety is isomorphic to A^1 \\ {0}?",
+        options: shuffle([
+          "V(xy - 1) in A^2.",
+          "A^1",
+          "V(y^2 - x) in A^2."
+        ]),
+        correct: "V(xy - 1) in A^2."
+      },
+      {
+        question: "What is the coordinate ring of U:= A^1 \\{0}? (O_{A^1}(U))",
+        options: shuffle([
+          "C[x].",
+          "C[x, 1/x].",
+          "C[x, y]."
+        ]),
+        correct: "C[x, 1/x]."
+      },
+      {
+        question: "Is cone {(1,2), (0,1)} a smooth cone?",
+        options: shuffle(["Yes!", "No!", "Who? What?"]),
+        correct: "Yes!"
+      },
+      {
+        question: "Which implication between smoothness, connectedness, and irreducibility holds?",
+        options: shuffle([
+          "Smooth + connected => Irreducible",
+          "Smooth => Connected + Irreducible",
+          "Connected + Irreducible => Smooth"
+        ]),
+        correct: "Smooth + connected => Irreducible"
+      },
+      {
+        question: "Define an affine algebraic variety.",
+        options: shuffle([
+          "Variety defined in affine space by polynomials.",
+          "An open subset of affine variety.",
+          "A variety isomorphic to a closed affine algebraic variety."
+        ]),
+        correct: "A variety isomorphic to a closed affine algebraic variety."
+      },
+      {
+        question: "What variety is quasi-affine but not affine?",
+        options: shuffle([
+          "A^2 \\ A^1 x {0}.",
+          "V(xy - 1).",
+          "A^2 \\ {(0,0)}."
+        ]),
+        correct: "A^2 \\ {(0,0)}."
+      }
+    ];
+
+    // Spawn a new flame if there's enough spacing from the last one
+    function createFlame() {
+      const minSpacing = 150; 
+      if (flames.length === 0 || canvas.width - lastFlameX >= minSpacing) {
+        const newFlame = {
+          x: canvas.width,
+          y: groundLevel - 40,
+          width: 20,
+          height: 40
+        };
+        flames.push(newFlame);
+        lastFlameX = canvas.width;
+      }
+    }
+
+    function update() {
+      if (gameover) return;
+
+      // Gravity
+      player.dy += player.gravity;
+      player.y += player.dy;
+
+      // Land on ground
+      if (player.y + player.height >= groundLevel) {
+        player.y = groundLevel - player.height;
+        player.dy = 0;
+        player.onGround = true;
+      }
+
+      // Move flames
+      flames.forEach(flame => {
+        flame.x -= flameSpeed;
+      });
+
+      // Keep flames on screen
+      flames = flames.filter(flame => flame.x + flame.width > 0);
+
+      // Check collision
+      flames.forEach(flame => {
+        if (
+          player.x < flame.x + flame.width &&
+          player.x + player.width > flame.x &&
+          player.y < flame.y + flame.height &&
+          player.y + player.height > flame.y
+        ) {
+          // Game over
+          gameover = true;
+
+          const gameOverScoreEl = document.getElementById("gameOverScore");
+          gameOverScoreEl.textContent = `Your final score: ${score}. ${getMessageForScore(score)}`;
+
+          document.getElementById('gameOverModal').style.display = 'flex';
+        }
+      });
+
+      // Win condition: answered all questions
+      if (currentQuiz >= quizData.length) {
+        gameover = true;
+        document.getElementById('finalScoreText').textContent = 
+          `Final Score: ${score}. ${getMessageForScore(score)}`;
+
+        document.getElementById('winModal').style.display = 'flex';
+      }
+    }
+
+    // Load cat image
+    const catImg = new Image();
+catImg.src = 'persian-cat.png'; // Make sure this file exists in the same directory
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw ground
+  ctx.fillStyle = "green";
+  ctx.fillRect(0, groundLevel, canvas.width, canvas.height - groundLevel);
+
+  // Draw Persian cat character
+  ctx.drawImage(catImg, player.x, player.y, player.width, player.height);
+
+  // Flames
+  ctx.fillStyle = "orange";
+  flames.forEach(flame => {
+    ctx.fillRect(flame.x, flame.y, flame.width, flame.height);
+  });
+}
+
+
+    function askQuiz(){
+      // Only if onGround, not gameover, and more quizzes remain
+      if (!player.onGround || gameover || currentQuiz >= quizData.length) return;
+
+      flameSpeed = 0;
+      const modal = document.getElementById('quizModal');
+      modal.style.display = 'flex';
+
+      const quiz = quizData[currentQuiz];
+      document.getElementById('quizQuestion').textContent = quiz.question;
+
+      const optionsDiv = document.getElementById('quizOptions');
+      optionsDiv.innerHTML = '';
+
+      // Create a button for each option
+      quiz.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-button';
+        btn.textContent = opt;
+
+        btn.onclick = () => {
+          modal.style.display = 'none';
+          flameSpeed = 3;
+
+          // If correct => increment score, jump
+          if(opt === quiz.correct){
+            score++;
+            document.getElementById('scoreDisplay').textContent = "Score: " + score;
+
+            // Jump
+            player.dy = -player.jumpStrength;
+            player.onGround = false;
+
+            currentQuiz++;
+          }
+        };
+        optionsDiv.appendChild(btn);
+      });
+    }
+
+    // Listen for space bar => ask quiz
+    document.addEventListener('keydown', e => {
+      if(e.code === "Space") {
+        askQuiz();
+      }
+    });
+
+    // Listen for canvas click => ask quiz
+    canvas.addEventListener('click', askQuiz);
+
+    // Spawn new flame every 4 seconds
+    setInterval(createFlame, 4000);
+
+    // Main animation loop
+    function animate() {
+      update();
+      draw();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>

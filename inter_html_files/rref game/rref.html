@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RREF or NAH?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-900">
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+    <script type="text/babel" data-presets="env,react">
+      const { useState, useEffect, useRef } = React;
+
+      // --- LOGIC HELPERS ---
+
+      // Checks if a matrix is in Reduced Row Echelon Form and returns an object { isRREF: boolean, reason: string }
+      const analyzeRREF = (matrix) => {
+        const rows = matrix.length;
+        const cols = matrix[0].length;
+        let lastPivotCol = -1;
+        let foundZeroRow = false;
+
+        for (let r = 0; r < rows; r++) {
+          // Find the first non-zero entry in this row (the pivot candidate)
+          let pivotCol = -1;
+          for (let c = 0; c < cols; c++) {
+            if (matrix[r][c] !== 0) {
+              pivotCol = c;
+              break;
+            }
+          }
+
+          // CASE 1: It's a zero row
+          if (pivotCol === -1) {
+            foundZeroRow = true;
+            continue;
+          }
+
+          // CASE 2: We found a non-zero row AFTER a zero row
+          if (foundZeroRow) {
+            return {
+              isRREF: false,
+              reason: `Row ${r + 1} is not zero, but it appears below a row of all zeros.`,
+            };
+          }
+
+          // CASE 3: Leading entry is not 1 (specifically -1 in our constraint set)
+          if (matrix[r][pivotCol] !== 1) {
+            return {
+              isRREF: false,
+              reason: `Row ${r + 1} has a leading entry of ${matrix[r][pivotCol]}. Leading entries must be +1.`,
+            };
+          }
+
+          // CASE 4: Pivot is not to the right of the previous pivot
+          if (pivotCol <= lastPivotCol) {
+            return {
+              isRREF: false,
+              reason: `The leading 1 in Row ${r + 1} is not to the right of the leading 1 in the row above.`,
+            };
+          }
+
+          // CASE 5: Check if the pivot column is "clean" (all other entries in this column must be 0)
+          for (let k = 0; k < rows; k++) {
+            if (k !== r && matrix[k][pivotCol] !== 0) {
+              return {
+                isRREF: false,
+                reason: `Column ${pivotCol + 1} contains a non-zero number above or below a leading 1.`,
+              };
+            }
+          }
+
+          lastPivotCol = pivotCol;
+        }
+
+        return {
+          isRREF: true,
+          reason:
+            "It satisfies all conditions: Leading 1s, correct stair steps, clean columns, and zero rows at the bottom.",
+        };
+      };
+
+      // Generates a random integer: -1, 0, or 1
+      const randInt = () => {
+        const r = Math.random();
+        if (r < 0.6) return 0; // Bias towards 0 for realistic matrices
+        return Math.random() < 0.5 ? 1 : -1;
+      };
+
+      // Generates a problem. 50% chance of being RREF, 50% chance of being "fake" RREF
+      const generateProblem = () => {
+        const rows = 3;
+        const cols = 4;
+        const shouldBeRREF = Math.random() > 0.5;
+
+        // Start with a blank slate
+        let matrix = Array(rows)
+          .fill()
+          .map(() => Array(cols).fill(0));
+
+        if (shouldBeRREF) {
+          // --- CONSTRUCT VALID RREF ---
+          const numPivots = Math.floor(Math.random() * 3) + 1; // 1 to 3 pivots
+          let pivotCols = [];
+          while (pivotCols.length < numPivots) {
+            let c = Math.floor(Math.random() * cols);
+            if (!pivotCols.includes(c)) pivotCols.push(c);
+          }
+          pivotCols.sort((a, b) => a - b);
+
+          // Place 1s
+          pivotCols.forEach((colIndex, rowIndex) => {
+            if (rowIndex < rows) {
+              matrix[rowIndex][colIndex] = 1;
+            }
+          });
+
+          // Fill non-pivot columns
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (!pivotCols.includes(c)) {
+                matrix[r][c] = randInt();
+              }
+            }
+          }
+
+          // Clean up: Ensure pivot structure is perfect
+          pivotCols.forEach((col, row) => {
+            if (row >= rows) return;
+            matrix[row] = matrix[row].map((val, c) => (c === col ? 1 : val));
+            for (let r = 0; r < rows; r++) {
+              if (r !== row) matrix[r][col] = 0;
+            }
+            for (let c = 0; c < col; c++) {
+              matrix[row][c] = 0;
+            }
+          });
+        } else {
+          // --- CONSTRUCT INVALID RREF (The Sabotage) ---
+          matrix = [
+            [1, 0, randInt(), 0],
+            [0, 1, randInt(), 0],
+            [0, 0, 0, 1],
+          ];
+
+          const crime = Math.floor(Math.random() * 4);
+
+          if (crime === 0) {
+            matrix[1][1] = -1;
+          } else if (crime === 1) {
+            matrix[0][1] = Math.random() > 0.5 ? 1 : -1;
+          } else if (crime === 2) {
+            matrix[1][1] = 0;
+            matrix[1][0] = 1;
+          } else if (crime === 3) {
+            matrix[2] = [0, 0, 0, 0];
+            matrix[1] = [0, 0, 0, 0];
+            matrix[2] = [0, 0, 1, 0];
+          }
+        }
+
+        return {
+          matrix,
+          analysis: analyzeRREF(matrix),
+        };
+      };
+
+      function MatrixGame() {
+        const [gameState, setGameState] = useState(generateProblem());
+        const [score, setScore] = useState(0);
+        const [streak, setStreak] = useState(0);
+        const [feedback, setFeedback] = useState(null); // null, 'correct', or 'incorrect'
+
+        // Timer state
+        const [startTime, setStartTime] = useState(Date.now());
+        const [elapsed, setElapsed] = useState(0);
+        const [finalTime, setFinalTime] = useState(0);
+
+        // Audio state
+        const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+        const audioRef = useRef(null);
+        const correctAudioRef = useRef(null);
+        const incorrectAudioRef = useRef(null);
+        const cheerAudioRef = useRef(null);
+        const MUSIC_URL =
+          "https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3";
+
+        // Timer Effect
+        useEffect(() => {
+          let interval;
+          if (!feedback) {
+            // Only tick if game is active (no feedback showing)
+            interval = setInterval(() => {
+              setElapsed(Date.now() - startTime);
+            }, 50);
+          }
+          return () => clearInterval(interval);
+        }, [feedback, startTime]);
+
+        // Music Effect
+        useEffect(() => {
+          if (audioRef.current) {
+            audioRef.current.volume = 0.3; // Lower volume so it's background
+            if (isMusicPlaying) {
+              audioRef.current
+                .play()
+                .catch((e) => console.log("Audio play blocked", e));
+            } else {
+              audioRef.current.pause();
+            }
+          }
+        }, [isMusicPlaying]);
+
+        const handleGuess = (userGuessIsRREF) => {
+          if (feedback) return; // Prevent double clicking
+
+          // Stop timer
+          const timeTaken = (Date.now() - startTime) / 1000;
+          setFinalTime(timeTaken);
+
+          const isCorrect =
+            userGuessIsRREF === gameState.analysis.isRREF;
+          const nextStreak = isCorrect ? streak + 1 : 0;
+
+          if (isCorrect) {
+            // Bonus points for speed? Let's add a small speed bonus if under 3 seconds
+            const speedBonus = timeTaken < 3 ? 5 : 0;
+            setScore((s) => s + 10 + speedBonus + streak * 2);
+            setStreak(nextStreak);
+            setFeedback("correct");
+
+            // Play correct sound
+            if (correctAudioRef.current) {
+              correctAudioRef.current.currentTime = 0;
+              correctAudioRef.current
+                .play()
+                .catch((e) => console.log(e));
+            }
+
+            // Play crowd cheer on streak of 5
+            if (nextStreak === 5 && cheerAudioRef.current) {
+              cheerAudioRef.current.currentTime = 0;
+              cheerAudioRef.current
+                .play()
+                .catch((e) => console.log(e));
+            }
+          } else {
+            setStreak(nextStreak);
+            setFeedback("incorrect");
+
+            // Play incorrect sound
+            if (incorrectAudioRef.current) {
+              incorrectAudioRef.current.currentTime = 0;
+              incorrectAudioRef.current
+                .play()
+                .catch((e) => console.log(e));
+            }
+          }
+        };
+
+        const nextRound = () => {
+          setFeedback(null);
+          setGameState(generateProblem());
+          setStartTime(Date.now());
+          setElapsed(0);
+        };
+
+        const toggleMusic = () => {
+          setIsMusicPlaying(!isMusicPlaying);
+        };
+
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
+            {/* Audio Elements */}
+            <audio ref={audioRef} src={MUSIC_URL} loop />
+            <audio
+              ref={correctAudioRef}
+              src="./positive_beeps-85504.mp3"
+            />
+            <audio
+              ref={incorrectAudioRef}
+              src="./reject-interface-sound-201948.mp3"
+            />
+            <audio
+              ref={cheerAudioRef}
+              src="./short-crowd-cheer-6713.mp3"
+            />
+
+            {/* Music Toggle */}
+            <button
+              onClick={toggleMusic}
+              className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 rounded-full border border-slate-600 transition-colors z-10"
+              title={isMusicPlaying ? "Mute Music" : "Play Music"}
+            >
+              <span
+                className={
+                  isMusicPlaying
+                    ? "text-emerald-400 w-6 h-6"
+                    : "text-slate-500 w-6 h-6"
+                }
+              >
+                {isMusicPlaying ? "🔊" : "🔇"}
+              </span>
+            </button>
+
+            {/* Left sidebar label */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-sm">
+            </div>
+
+            {/* Header */}
+            <div className="w-full max-w-md flex justify-between items-center mb-8 bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-400 w-6 h-6">🏆</span>
+                <span className="text-xl font-bold">{score} pts</span>
+              </div>
+
+              {/* Timer Display in Header */}
+              <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1 rounded-lg border border-slate-700">
+                <span className="w-4 h-4 text-cyan-400">⏱</span>
+                <span className="font-mono text-lg w-14 text-right">
+                  {feedback
+                    ? finalTime.toFixed(1)
+                    : (elapsed / 1000).toFixed(1)}
+                  s
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`${
+                    streak > 2
+                      ? "text-orange-500 animate-pulse"
+                      : "text-slate-400"
+                  } w-5 h-5`}
+                >
+                  ⚡
+                </span>
+                <span className="font-mono text-lg">
+                  Streak: {streak}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-6 text-center">
+              <h1 className="text-3xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                RREF or NAH?
+              </h1>
+              <p className="text-slate-400 text-sm">
+                Entries are limited to +1, -1, 0
+              </p>
+            </div>
+
+            {/* Game Card */}
+            <div className="relative bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-md transition-all duration-300">
+              {/* Matrix Display */}
+              <div className="flex justify-center mb-10">
+                <div className="flex items-center">
+                  {/* Left Bracket */}
+                  <div className="w-4 border-l-4 border-t-4 border-b-4 border-slate-300 rounded-l-xl h-32 mr-2"></div>
+
+                  {/* Grid */}
+                  <div className="grid grid-rows-3 gap-4">
+                    {gameState.matrix.map((row, rowIndex) => (
+                      <div
+                        key={rowIndex}
+                        className="grid grid-cols-4 gap-4"
+                      >
+                        {row.map((val, colIndex) => (
+                          <div
+                            key={colIndex}
+                            className={`w-10 h-10 flex items-center justify-center text-xl font-mono font-bold rounded
+                              ${
+                                val === 0
+                                  ? "text-slate-500"
+                                  : val === 1
+                                  ? "text-cyan-300"
+                                  : "text-pink-400"
+                              }
+                              ${
+                                feedback === "incorrect" &&
+                                gameState.analysis.reason.includes("Row " + (rowIndex + 1))
+                                  ? "bg-red-900/30 ring-1 ring-red-500"
+                                  : ""
+                              }
+                            `}
+                          >
+                            {val}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Right Bracket */}
+                  <div className="w-4 border-r-4 border-t-4 border-b-4 border-slate-300 rounded-r-xl h-32 ml-2"></div>
+                </div>
+              </div>
+
+              {/* Controls */}
+              {!feedback ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleGuess(true)}
+                    className="group relative h-20 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-all shadow-[0_6px_0_0_#064e3b] hover:shadow-[0_3px_0_0_#064e3b] active:translate-y-[3px] active:shadow-none flex flex-col items-center justify-center overflow-hidden"
+                  >
+                    <span className="text-2xl z-10">✨</span>
+                    <span className="font-bold text-emerald-100 z-10">
+                      RREF
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </button>
+
+                  <button
+                    onClick={() => handleGuess(false)}
+                    className="group relative h-20 rounded-xl bg-rose-600 hover:bg-rose-500 transition-all shadow-[0_6px_0_0_#881337] hover:shadow-[0_3px_0_0_#881337] active:translate-y-[3px] active:shadow-none flex flex-col items-center justify-center overflow-hidden"
+                  >
+                    <span className="text-2xl z-10">🔥</span>
+                    <span className="font-bold text-rose-100 z-10">
+                      NAH
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </button>
+                </div>
+              ) : (
+                <div className="animate-in fade-in zoom-in duration-300">
+                  <div
+                    className={`p-4 rounded-xl mb-4 text-center border-2 ${
+                      feedback === "correct"
+                        ? "bg-emerald-900/50 border-emerald-500"
+                        : "bg-rose-900/50 border-rose-500"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      {feedback === "correct" ? (
+                        <>
+                          <span className="w-12 h-12 text-emerald-400">
+                            ✅
+                          </span>
+                          <h3 className="text-xl font-bold text-emerald-300">
+                            Nailed it!
+                          </h3>
+                          <p className="text-emerald-200 text-sm">
+                            {gameState.analysis.isRREF
+                              ? "Indeed perfectly reduced."
+                              : "You spotted the mess!"}
+                          </p>
+                          <div className="text-xs text-emerald-300 font-mono mt-1">
+                            Time: {finalTime.toFixed(2)}s{" "}
+                            {finalTime < 3 && "⚡ FAST!"}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-12 h-12 text-rose-400">
+                            ❌
+                          </span>
+                          <h3 className="text-xl font-bold text-rose-300">
+                            Bazinga! Wrong!
+                          </h3>
+                          <p className="text-rose-200 text-sm">
+                            It was actually{" "}
+                            {gameState.analysis.isRREF
+                              ? "Correct Form"
+                              : "Not Correct Form"}
+                            .
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Explanation Box */}
+                  {!gameState.analysis.isRREF && (
+                    <div className="bg-slate-900/50 p-3 rounded border border-slate-600 mb-4 flex items-start gap-3">
+                      <span className="w-5 h-5 text-sky-400 shrink-0 mt-0.5">
+                        ℹ️
+                      </span>
+                      <p className="text-sm text-slate-300 text-left">
+                        <span className="font-bold text-sky-400">
+                          Why?{" "}
+                        </span>
+                        {gameState.analysis.reason}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={nextRound}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <span className="w-5 h-5">🔁</span>
+                    Next Matrix
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 max-w-md text-center">
+              <details className="text-slate-500 text-xs cursor-pointer hover:text-slate-400">
+                <summary>Review Rules of RREF</summary>
+                <ul className="text-left list-disc pl-6 pt-2 space-y-1">
+                  <li>
+                    If a row is not all zeros, the first non-zero
+                    number is 1.
+                  </li>
+                  <li>
+                    The leading 1 of a row is to the right of the
+                    leading 1 of the row above.
+                  </li>
+                  <li>
+                    All entries in a column above or below a leading 1
+                    are zero.
+                  </li>
+                  <li>Rows of all zeros are at the bottom.</li>
+                </ul>
+              </details>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<MatrixGame />);
+    </script>
+  </body>
+</html>

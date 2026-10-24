@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P² Atlas & Natural Charts</title>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$','$'], ['\\(','\\)']] },
+            svg: { fontCache: 'global' },
+            startup: { typeset: true }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --panel: rgba(255, 255, 255, 0.92);
+            --border: #e2e8f0;
+            --text: #1e293b;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--text);
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui-container {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: var(--panel);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 18px -4px rgba(0, 0, 0, 0.1);
+            max-width: 230px;
+            backdrop-filter: blur(8px);
+            z-index: 10;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        #ui-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        #ui-header:hover { background: rgba(0,0,0,0.02); }
+        #ui-container.open #ui-header { border-bottom-color: var(--border); }
+        #ui-header h1 {
+            font-size: 0.9rem;
+            margin: 0;
+            color: var(--primary);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        #ui-chevron {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            transition: transform 0.3s;
+        }
+        #ui-container.open #ui-chevron { transform: rotate(180deg); }
+        #ui-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 14px;
+        }
+        #ui-container.open #ui-body {
+            max-height: 400px;
+            padding: 10px 14px 14px;
+        }
+        #ui-body p {
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin: 0 0 10px 0;
+            color: #64748b;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            padding: 5px 6px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .checkbox-item:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        .checkbox-item input {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+        .legend {
+            font-size: 0.7rem;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 3px;
+        }
+        .color-box {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+        .label-ux { background: #ef4444; }
+        .label-uy { background: #22c55e; }
+        .label-uz { background: #3b82f6; }
+
+        .hint {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.65);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script src="diagram-scroll.js"></script>
+</head>
+<body>
+
+    <div id="ui-container" class="open">
+        <div id="ui-header" onclick="document.getElementById('ui-container').classList.toggle('open')">
+            <h1>Atlas of \(\mathbb{P}^2\)</h1>
+            <span id="ui-chevron">&#9660;</span>
+        </div>
+        <div id="ui-body">
+            <p>Toggle chart regions. Click a patch on the sphere to show the affine chart projection.</p>
+
+            <div class="control-group">
+                <label class="checkbox-item">
+                    <input type="checkbox" id="check-ux"> \(U_x\) Patch
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="check-uy"> \(U_y\) Patch
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="check-uz"> \(U_z\) Patch
+                </label>
+            </div>
+
+            <div class="legend">
+                <div class="legend-row"><div class="color-box label-ux"></div> <span>Red: Chart \(x=1\)</span></div>
+                <div class="legend-row"><div class="color-box label-uy"></div> <span>Green: Chart \(y=1\)</span></div>
+                <div class="legend-row"><div class="color-box label-uz"></div> <span>Blue: Chart \(z=1\)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hint">Rotate: Drag Background | Zoom: Ctrl/⌘ + Scroll | Interact: Click Patches</div>
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Configuration ---
+        const SPHERE_RADIUS = 1.5;
+        const THRESHOLD = 0.3; // Updated to 0.3
+        const CONE_EXTENSION = 1.2; // How much the cone passes through the plane
+
+        // --- Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8fafc);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(10, 8, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        zoomOnlyOnGesture(renderer.domElement);
+
+        // --- Lights ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- Objects ---
+
+        // 1. The Reference Sphere
+        const sphereGeo = new THREE.SphereGeometry(SPHERE_RADIUS, 64, 64);
+        const sphereMat = new THREE.MeshPhysicalMaterial({
+            color: 0x94a3b8,
+            transparent: true,
+            opacity: 0.1,
+            roughness: 0.1,
+            metalness: 0.1,
+            depthWrite: false
+        });
+        const mainSphere = new THREE.Mesh(sphereGeo, sphereMat);
+        scene.add(mainSphere);
+
+        // Grid helper on sphere
+        const sphereWire = new THREE.Mesh(
+            sphereGeo,
+            new THREE.MeshBasicMaterial({ color: 0xcbd5e1, wireframe: true, transparent: true, opacity: 0.05 })
+        );
+        scene.add(sphereWire);
+
+        // Axes
+        const axesHelper = new THREE.AxesHelper(SPHERE_RADIUS * 2);
+        scene.add(axesHelper);
+
+        // 2. Chart Groups
+        const charts = {
+            x: { color: 0xef4444, axis: new THREE.Vector3(1, 0, 0), group: new THREE.Group() },
+            y: { color: 0x22c55e, axis: new THREE.Vector3(0, 1, 0), group: new THREE.Group() },
+            z: { color: 0x3b82f6, axis: new THREE.Vector3(0, 0, 1), group: new THREE.Group() }
+        };
+
+        function createChartElements(key) {
+            const config = charts[key];
+            const group = config.group;
+            scene.add(group);
+            group.visible = false;
+
+            const angle = Math.acos(THRESHOLD);
+
+            // --- Patches ---
+            const capGeo = new THREE.SphereGeometry(SPHERE_RADIUS + 0.01, 32, 16, 0, Math.PI * 2, 0, angle);
+            const capMat = new THREE.MeshStandardMaterial({
+                color: config.color,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide
+            });
+
+            const circlePoints = [];
+            for(let i=0; i<=64; i++) {
+                const a = (i/64) * Math.PI * 2;
+                circlePoints.push(new THREE.Vector3(Math.cos(a) * Math.sin(angle) * SPHERE_RADIUS, Math.cos(angle) * SPHERE_RADIUS, Math.sin(a) * Math.sin(angle) * SPHERE_RADIUS));
+            }
+            const boundaryGeo = new THREE.BufferGeometry().setFromPoints(circlePoints);
+            const boundaryMat = new THREE.LineDashedMaterial({ color: config.color, dashSize: 0.1, gapSize: 0.1 });
+
+            const patches = new THREE.Group();
+
+            const capPos = new THREE.Mesh(capGeo, capMat);
+            const linePos = new THREE.Line(boundaryGeo, boundaryMat);
+            linePos.computeLineDistances();
+
+            const capNeg = new THREE.Mesh(capGeo, capMat);
+            capNeg.rotation.x = Math.PI;
+            const lineNeg = new THREE.Line(boundaryGeo, boundaryMat);
+            lineNeg.rotation.x = Math.PI;
+            lineNeg.computeLineDistances();
+
+            patches.add(capPos, capNeg, linePos, lineNeg);
+
+            if (key === 'x') patches.rotation.z = -Math.PI/2;
+            if (key === 'z') patches.rotation.x = Math.PI/2;
+
+            group.add(patches);
+            config.patches = patches;
+
+            // --- Chart Visuals ---
+            const chartVisuals = new THREE.Group();
+            group.add(chartVisuals);
+            chartVisuals.visible = false;
+
+            if (key === 'x') chartVisuals.rotation.z = -Math.PI/2;
+            if (key === 'z') chartVisuals.rotation.x = Math.PI/2;
+
+            // Radius on plane R*tan(angle)
+            const coneRadiusAtPlane = SPHERE_RADIUS * Math.tan(angle);
+            const planeSize = coneRadiusAtPlane * 2.1;
+
+            const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
+            const planeMat = new THREE.MeshPhysicalMaterial({
+                color: config.color,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.DoubleSide,
+                roughness: 0.5
+            });
+
+            const planePos = new THREE.Mesh(planeGeo, planeMat);
+            planePos.position.y = SPHERE_RADIUS;
+            planePos.rotation.x = Math.PI/2;
+
+            const gridPos = new THREE.GridHelper(planeSize, 10, config.color, config.color);
+            gridPos.material.transparent = true;
+            gridPos.material.opacity = 0.3;
+            planePos.add(gridPos);
+
+            chartVisuals.add(planePos);
+
+            const totalHeight = SPHERE_RADIUS * CONE_EXTENSION;
+            const radiusAtEnd = totalHeight * Math.tan(angle);
+
+            const coneGeo = new THREE.CylinderGeometry(radiusAtEnd, 0, totalHeight, 32, 1, true);
+            coneGeo.translate(0, totalHeight/2, 0);
+
+            const coneMat = new THREE.MeshBasicMaterial({
+                color: config.color,
+                transparent: true,
+                opacity: 0.08,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+
+            const conePos = new THREE.Mesh(coneGeo, coneMat);
+            const coneNeg = new THREE.Mesh(coneGeo, coneMat);
+            coneNeg.rotation.x = Math.PI;
+
+            chartVisuals.add(conePos, coneNeg);
+            config.visuals = chartVisuals;
+        }
+
+        ['x', 'y', 'z'].forEach(createChartElements);
+
+        // --- Interaction ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function handleToggle(id, key) {
+            document.getElementById(id).addEventListener('change', (e) => {
+                charts[key].group.visible = e.target.checked;
+            });
+        }
+
+        handleToggle('check-ux', 'x');
+        handleToggle('check-uy', 'y');
+        handleToggle('check-uz', 'z');
+
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            for (let key in charts) {
+                const config = charts[key];
+                if (!config.group.visible) continue;
+
+                const intersects = raycaster.intersectObject(config.patches, true);
+                if (intersects.length > 0) {
+                    config.visuals.visible = !config.visuals.visible;
+                    return;
+                }
+            }
+        });
+
+        function animate() {
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animateWhileVisible(renderer.domElement, animate);
+    </script>
+</body>
+</html>

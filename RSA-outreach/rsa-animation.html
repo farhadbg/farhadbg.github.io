@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Animation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&display=swap');
+        
+        html, body { height: 100%; }
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #f0f4f8;
+            overflow-x: hidden;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            min-height: 100%;
+            margin: 0;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 960px;
+            padding: 1rem;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        @media (min-width: 768px) {
+            .canvas-container { height: 560px; }
+        }
+
+        /* Character Styles */
+        .character {
+            position: absolute;
+            width: 70px;
+            height: 110px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        @media (min-width: 768px) {
+            .character { width: 80px; height: 120px; }
+        }
+
+        .head {
+            width: 50px;
+            height: 50px;
+            background: #ffdbac;
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            border: 2px solid #333;
+            z-index: 2;
+        }
+
+        .body {
+            width: 60px;
+            height: 55px;
+            border-radius: 12px 12px 5px 5px;
+            margin: -5px auto 0;
+            border: 2px solid #333;
+            position: relative;
+            z-index: 2;
+        }
+
+        .alice .body { background: #ec4899; }
+        .bob .body { background: #3b82f6; }
+
+        .smile {
+            width: 18px;
+            height: 10px;
+            border: 2px solid #333;
+            border-top: 0;
+            border-radius: 0 0 10px 10px;
+            position: absolute;
+            left: 15px;
+            bottom: 8px;
+        }
+
+        /* Hacker Cat (Man-in-the-Middle) */
+        .hacker-cat {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            bottom: auto;
+            transform: none;
+            width: auto;
+            text-align: left;
+            display: none;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .cat-stack{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .cat-label{
+            font-size: 10px;
+            font-weight: 800;
+            color: #64748b;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .hacker-cat img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.18));
+        }
+
+        .thought-bubble {
+            position: absolute;
+            left: 132px;
+            top: -6px;
+            width: min(240px, 68vw);
+            background: rgba(255,255,255,0.95);
+            border: 2px solid #333;
+            border-radius: 18px;
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            line-height: 1.25;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+        }
+
+        .thought-bubble::after,
+        .thought-bubble::before{
+            content: '';
+            position: absolute;
+            border: 2px solid #333;
+            background: rgba(255,255,255,0.95);
+            border-radius: 999px;
+        }
+        .thought-bubble::after{
+            width: 14px;
+            height: 14px;
+            left: 22px;
+            bottom: -18px;
+        }
+        .thought-bubble::before{
+            width: 8px;
+            height: 8px;
+            left: 12px;
+            bottom: -30px;
+        }
+
+        @media (min-width: 768px) {
+            .hacker-cat { top: 16px; left: 16px; }
+            .hacker-cat img { width: 144px; height: 144px; }
+            .thought-bubble { left: 156px; top: -8px; width: 260px; font-size: 0.85rem; }
+        }
+
+        .item {
+            position: absolute;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .key-public { color: #16a34a; }
+        .key-private { color: #ef4444; }
+        
+        .message-box {
+            background: #fff;
+            border: 2px solid #333;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: bold;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+            font-size: 0.75rem;
+            max-width: min(240px, 70vw);
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .speech-bubble {
+            position: absolute;
+            background: white;
+            border: 2px solid #333;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            width: 110px;
+            bottom: 125px;
+            display: none;
+            z-index: 5;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        @media (min-width: 768px) {
+            .speech-bubble { width: 140px; bottom: 140px; font-size: 0.85rem; }
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: #333 transparent;
+        }
+
+        .item-floating { animation: itemFloat 3s ease-in-out infinite; }
+        @keyframes itemFloat {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="canvas-container bg-slate-50" id="stage">
+            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#4f46e5 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+            <div class="hacker-cat" id="hackerCat" aria-hidden="true">
+                <div class="cat-stack">
+                    <img src="cat-dark.png" alt="Hacker cat" onerror="this.style.display='none';">
+                    <div class="cat-label">Hacker Cat</div>
+                    <div class="thought-bubble" id="catThought">Knowing public key and c, can I recover the original message?</div>
+                </div>
+            </div>
+
+            <!-- Characters -->
+            <div class="character alice" id="alice" style="left: 10%; bottom: 10%;">
+                <div class="speech-bubble" id="alice-speech">Hi Bob! 😊</div>
+                <div class="head">
+                    <div style="width: 8px; height: 8px; background: #333; border-radius: 50%; position: absolute; left: 10px; top: 15px;"></div>
+                    <div style="width: 8px; height: 8px; background: #333; border-radius: 50%; position: absolute; right: 10px; top: 15px;"></div>
+                    <div class="smile"></div>
+                </div>
+                <div class="body"></div>
+                <p class="mt-1 text-xs font-bold">Alice</p>
+            </div>
+
+            <div class="character bob" id="bob" style="right: 10%; bottom: 10%;">
+                <div class="speech-bubble" id="bob-speech" style="right: 0;">Hi Alice! 😊</div>
+                <div class="head">
+                    <div style="width: 8px; height: 8px; background: #333; border-radius: 50%; position: absolute; left: 10px; top: 15px;"></div>
+                    <div style="width: 8px; height: 8px; background: #333; border-radius: 50%; position: absolute; right: 10px; top: 15px;"></div>
+                    <div class="smile"></div>
+                </div>
+                <div class="body"></div>
+                <p class="mt-1 text-xs font-bold">Bob</p>
+            </div>
+
+            <!-- Items Layer -->
+            <div id="items-container"></div>
+
+            <!-- Next button between Alice and Bob -->
+            <button id="nextBtn" style="position:absolute; left:50%; bottom:14%; transform:translateX(-50%); z-index:25;" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200 transition font-medium text-sm">Next Step</button>
+        </div>
+    </div>
+
+    <script>
+        const itemsContainer = document.getElementById('items-container');
+        const nextBtn = document.getElementById('nextBtn');
+        const aliceSpeech = document.getElementById('alice-speech');
+        const bobSpeech = document.getElementById('bob-speech');
+        const stage = document.getElementById('stage');
+        const hackerCat = document.getElementById('hackerCat');
+
+        let currentStep = 0;
+        const totalSteps = 6;
+
+        const pubKeySvg = `<svg class="key-public w-10 h-10 md:w-12 md:h-12" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"></path></svg>`;
+        const privKeySvg = `<svg class="key-private w-10 h-10 md:w-12 md:h-12" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"></path></svg>`;
+        const lockSvg = `<svg class="w-6 h-6 md:w-8 md:h-8 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>`;
+
+        function clearItems() {
+            itemsContainer.innerHTML = '';
+            aliceSpeech.style.display = 'none';
+            bobSpeech.style.display = 'none';
+            if (hackerCat) hackerCat.style.display = 'none';
+        }
+
+        function createItem(html, x, y, className = '') {
+            const div = document.createElement('div');
+            div.className = 'item ' + className;
+            div.innerHTML = html;
+            div.style.left = x;
+            div.style.bottom = y;
+            itemsContainer.appendChild(div);
+            return div;
+        }
+
+        function updateUI() {
+            nextBtn.innerText = currentStep === totalSteps - 1 ? "Start Over" : "Next Step";
+            renderStep();
+        }
+
+        function renderStep() {
+            clearItems();
+            const isNarrow = stage.clientWidth < 520;
+            const yMid = isNarrow ? '52%' : '65%';
+            const yHigh = isNarrow ? '74%' : '78%';
+            const xAlice = isNarrow ? '22%' : '14%';
+            const xAlice2 = isNarrow ? '40%' : '30%';
+            const xBob = isNarrow ? '78%' : '85%';
+            const xBob2 = isNarrow ? '62%' : '70%';
+
+            switch(currentStep) {
+                case 0: 
+                    bobSpeech.innerText = "I'm generating my unique RSA keys!";
+                    bobSpeech.style.display = 'block';
+                    createItem(pubKeySvg + '<p class="text-[9px] font-bold mt-1">Public Key</p>', xBob2, yHigh, 'item-floating');
+                    createItem(privKeySvg + '<p class="text-[9px] font-bold mt-1">Private Key</p>', xBob, yMid, 'item-floating');
+                    break;
+
+                case 1:
+                    bobSpeech.innerText = "Sending my Public Key to Alice!";
+                    bobSpeech.style.display = 'block';
+                    const movingKey = createItem(pubKeySvg, xBob, yHigh);
+                    setTimeout(() => {
+                        movingKey.style.left = xAlice;
+                        movingKey.style.transform = 'rotate(-10deg)';
+                    }, 50);
+                    break;
+
+                case 2:
+                    aliceSpeech.innerText = "Converting 'HELLO' to a number M!";
+                    aliceSpeech.style.display = 'block';
+                    const msgBox = createItem('<div class="message-box">HELLO</div>', xAlice, yMid);
+                    setTimeout(() => {
+                        msgBox.innerHTML = '<div class="message-box" style="background:#fef3c7">M = 7269767679</div>';
+                        msgBox.style.transform = 'scale(1.1)';
+                    }, 800);
+                    break;
+
+                case 3:
+                    aliceSpeech.innerText = "Encrypting M using Bob's Public Key!";
+                    aliceSpeech.style.display = 'block';
+                    createItem(pubKeySvg, xAlice2, yHigh, 'opacity-60 item-floating');
+                    const cBox = createItem('<div class="w-12 h-12 md:w-16 md:h-16 bg-slate-800 rounded-lg flex items-center justify-center">' + lockSvg + '</div>', xAlice, yMid, 'opacity-0');
+                    setTimeout(() => { cBox.style.opacity = '1'; }, 500);
+                    break;
+
+                case 4:
+                    aliceSpeech.innerText = "Sending ciphertext C to Bob!";
+                    aliceSpeech.style.display = 'block';
+                    if (hackerCat) hackerCat.style.display = 'block';
+                    const movingC = createItem('<div class="relative w-12 h-12 md:w-16 md:h-16 bg-slate-800 rounded-lg flex items-center justify-center">' + lockSvg + '<span class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-500">C</span></div>', xAlice, yMid);
+                    setTimeout(() => { movingC.style.left = xBob2; }, 50);
+                    break;
+
+                case 5:
+                    bobSpeech.innerText = "Decrypted! The message is safe!";
+                    bobSpeech.style.display = 'block';
+                    createItem(privKeySvg, xBob, yHigh, 'opacity-60 item-floating');
+                    const locked = createItem('<div class="w-12 h-12 md:w-16 md:h-16 bg-slate-800 rounded-lg flex items-center justify-center">' + lockSvg + '</div>', xBob2, yMid);
+                    setTimeout(() => {
+                        locked.innerHTML = '<div class="message-box" style="background:#dcfce7">HELLO</div>';
+                        locked.className = 'item';
+                        bobSpeech.innerText = "I decrypted it: HELLO!";
+                    }, 1200);
+                    break;
+            }
+        }
+
+        nextBtn.addEventListener('click', () => {
+            currentStep = (currentStep + 1) % totalSteps;
+            updateUI();
+        });
+
+        updateUI();
+    </script>
+</body>
+</html>

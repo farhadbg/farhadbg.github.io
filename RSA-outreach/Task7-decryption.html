@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Decryption</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Roboto+Slab:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto Slab', serif; /* Academic feel */
+            background: linear-gradient(135deg, #0f172a 0%, #312e81 100%); /* Slightly different hue for decryption (indigo) */
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .math-font {
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+        }
+
+        .mono-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Confetti Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .input-glow:focus {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5); /* Indigo glow */
+            border-color: #6366f1;
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.5s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="max-w-2xl w-full">
+        <!-- Header -->
+        <div class="text-center mb-6 md:mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">RSA Decryption</h1>
+            <p class="text-slate-400 text-sm mono-font">Task 7: Decrypt the message</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-6 bg-slate-700 h-2 rounded-full overflow-hidden shadow-inner">
+            <div id="progress-bar" class="bg-indigo-500 h-full transition-all duration-500 ease-out w-0"></div>
+        </div>
+
+        <!-- Game Card -->
+        <div id="game-card" class="card rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden slide-in">
+            
+            <!-- Level Indicator -->
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                <span class="text-slate-400 text-xs md:text-sm uppercase tracking-wider font-bold">Problem <span id="current-level">1</span> of <span id="total-levels">6</span></span>
+                <div class="flex gap-1 text-xs font-mono bg-slate-800 px-3 py-1 rounded text-indigo-300">
+                    <span>m &equiv; c<sup>d</sup> (mod n)</span>
+                </div>
+            </div>
+
+            <!-- Problem Area -->
+            <div class="mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-lg">
+                    <!-- Ciphertext (c) -->
+                    <div class="bg-slate-800/50 p-4 rounded border border-slate-700/50 text-center ring-1 ring-indigo-500/30">
+                        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Ciphertext</div>
+                        <span class="math-font text-slate-400">c = </span>
+                        <span id="val-c" class="font-bold text-white text-2xl"></span>
+                    </div>
+
+                    <!-- Exponent (d) -->
+                    <div class="bg-slate-800/50 p-4 rounded border border-slate-700/50 text-center ring-1 ring-indigo-500/30">
+                        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Private Key</div>
+                        <span class="math-font text-slate-400">d = </span>
+                        <span id="val-d" class="font-bold text-indigo-400 text-2xl"></span>
+                    </div>
+
+                    <!-- Modulus (n) -->
+                    <div class="bg-slate-800/50 p-4 rounded border border-slate-700/50 text-center">
+                        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Modulus</div>
+                        <span class="math-font text-slate-400">n = </span>
+                        <span id="val-n" class="font-bold text-slate-300 text-2xl"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interaction Area -->
+            <div class="flex flex-col items-center gap-6" id="input-section">
+                <div class="w-full max-w-sm">
+                    <label class="block text-slate-300 text-sm md:text-base mb-3 text-center leading-relaxed">
+                        Say you've received a message <span class="math-font italic text-white font-bold">c</span>.<br>
+                        What was the original message?
+                    </label>
+                    <input type="number" id="user-input" 
+                        class="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-center text-3xl font-bold text-white focus:outline-none input-glow transition-all"
+                        placeholder="m = ?" autocomplete="off">
+                </div>
+
+                <button onclick="checkAnswer()" id="verify-btn"
+                    class="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95 w-full max-w-xs cursor-pointer shadow-lg shadow-indigo-900/40">
+                    Verify Decryption
+                </button>
+
+                <div id="feedback-msg" class="h-6 text-center font-bold text-lg transition-opacity duration-300 opacity-0"></div>
+            </div>
+
+            <!-- Next Button (Hidden initially) -->
+            <div id="next-section" class="hidden flex-col items-center gap-4 animate-fade-in">
+                <div class="text-green-400 text-xl font-bold flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i> Decrypted!
+                </div>
+                <div class="text-slate-400 text-sm mono-font mb-2">
+                    Recovered: <span id="calc-display" class="text-white font-bold"></span>
+                </div>
+                <button onclick="nextLevel()" id="next-btn"
+                    class="px-8 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all hover:scale-105 shadow-lg shadow-green-900/50 w-full max-w-xs">
+                    Next Problem <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Success Screen (Hidden) -->
+        <div id="success-screen" class="hidden card rounded-2xl p-12 text-center slide-in">
+            <div class="text-6xl mb-6 text-yellow-400">
+                <i class="fas fa-lock-open"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-4">Decryption Complete!</h2>
+            <p class="text-slate-400 mb-8">You have successfully recovered all original messages.</p>
+            <button onclick="location.reload()" 
+                class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all">
+                Restart
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Game Data (Task 7 Decryption) ---
+        // c = ciphertext, d = private key, n = modulus
+        const levels = [
+            { c: 8,   d: 7,   n: 33 },
+            { c: 48,  d: 29,  n: 65 },
+            { c: 4,   d: 77,  n: 119 },
+            { c: 136, d: 103, n: 209 },
+            { c: 156, d: 53,  n: 299 },
+            { c: 343, d: 299, n: 493 }
+        ];
+
+        let currentLevelIndex = 0;
+        let isAnimating = false;
+
+        // --- Core Logic: Modular Exponentiation ---
+        // Calculates (base^exp) % mod safely for integers
+        function modularExponentiation(base, exp, mod) {
+            let result = 1;
+            base = base % mod;
+            while (exp > 0) {
+                if (exp % 2 === 1) { // If exp is odd
+                    result = (result * base) % mod;
+                }
+                exp = Math.floor(exp / 2);
+                base = (base * base) % mod;
+            }
+            return result;
+        }
+
+        // --- UI Functions ---
+
+        function initGame() {
+            document.getElementById('total-levels').innerText = levels.length;
+            loadLevel(currentLevelIndex);
+            
+            // Add enter key support
+            document.getElementById('user-input').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+        }
+
+        function loadLevel(index) {
+            const level = levels[index];
+            
+            // Update Text
+            document.getElementById('current-level').innerText = index + 1;
+            document.getElementById('val-c').innerText = level.c;
+            document.getElementById('val-d').innerText = level.d;
+            document.getElementById('val-n').innerText = level.n;
+
+            // Reset UI States
+            document.getElementById('user-input').value = '';
+            document.getElementById('input-section').classList.remove('hidden');
+            document.getElementById('next-section').classList.add('hidden');
+            document.getElementById('feedback-msg').style.opacity = '0';
+            
+            // Update Progress Bar
+            const progress = (index / levels.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+        }
+
+        function checkAnswer() {
+            if (isAnimating) return;
+
+            const input = document.getElementById('user-input');
+            const feedback = document.getElementById('feedback-msg');
+            const userVal = parseInt(input.value);
+            const currentData = levels[currentLevelIndex];
+
+            if (isNaN(userVal)) {
+                shakeCard();
+                return;
+            }
+
+            // Calculate correct answer: m = c^d mod n
+            const correctAnswer = modularExponentiation(currentData.c, currentData.d, currentData.n);
+
+            if (userVal === correctAnswer) {
+                // Success
+                handleSuccess(currentData, correctAnswer);
+            } else {
+                // Failure
+                handleFailure(feedback);
+            }
+        }
+
+        function handleSuccess(data, answer) {
+            const inputSection = document.getElementById('input-section');
+            const nextSection = document.getElementById('next-section');
+            const calcDisplay = document.getElementById('calc-display');
+
+            // Fire confetti
+            fireConfetti();
+
+            // Hide input, show next button
+            inputSection.classList.add('hidden');
+            nextSection.classList.remove('hidden');
+            nextSection.classList.add('flex'); // Ensure flex display
+
+            // Show calculation string
+            calcDisplay.innerHTML = `m = ${data.c}<sup>${data.d}</sup> (mod ${data.n}) = ${answer}`;
+        }
+
+        function handleFailure(feedbackEl) {
+            feedbackEl.innerText = "Incorrect. Try again.";
+            feedbackEl.className = "h-6 text-center font-bold text-lg text-red-400";
+            feedbackEl.style.opacity = '1';
+            shakeCard();
+        }
+
+        function nextLevel() {
+            currentLevelIndex++;
+            if (currentLevelIndex < levels.length) {
+                loadLevel(currentLevelIndex);
+                // Focus only here, never on first load: this page is embedded in the RSA notes,
+                // and focusing on load scrolls the notes down to it and takes the keyboard.
+                document.getElementById('user-input').focus();
+            } else {
+                showEndScreen();
+            }
+        }
+
+        function showEndScreen() {
+            document.getElementById('game-card').classList.add('hidden');
+            document.getElementById('success-screen').classList.remove('hidden');
+            document.getElementById('progress-bar').style.width = '100%';
+            fireConfetti();
+            setTimeout(fireConfetti, 500);
+            setTimeout(fireConfetti, 1000);
+        }
+
+        function shakeCard() {
+            const card = document.getElementById('game-card');
+            card.classList.remove('shake');
+            void card.offsetWidth; // trigger reflow
+            card.classList.add('shake');
+        }
+
+        // --- Confetti Engine (Lightweight) ---
+        function fireConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const particleCount = 150;
+            const colors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: (Math.random() - 0.5) * 20 - 5,
+                    life: 100 + Math.random() * 50,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 5 + 2
+                });
+            }
+
+            function update() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+
+                particles.forEach(p => {
+                    if (p.life > 0) {
+                        active = true;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.5; // Gravity
+                        p.life--;
+                        
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+
+                if (active) {
+                    requestAnimationFrame(update);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            update();
+        }
+
+        // Handle resize for confetti
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Start
+        initGame();
+
+    </script>
+</body>
+</html>

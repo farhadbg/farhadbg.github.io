@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Determinant & Parallelepiped</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Blackboard/LMS Fix: Force minimum height */
+        html, body { 
+            height: 100%; 
+            min-height: 600px; 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #0f172a; 
+            font-family: 'Inter', sans-serif; 
+        }
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            outline: none; 
+            cursor: default; 
+        }
+        .overlay {
+            position: absolute;
+            pointer-events: none; /* Let clicks pass through */
+            user-select: none;
+        }
+        .controls {
+            pointer-events: auto;
+        }
+        /* Whether the matrix panel is open is decided in script, not here. A CSS rule with
+           !important used to hide it below 640px, which beat the inline style the toggle sets:
+           the button's label changed to "Hide matrix" while the panel stayed hidden. */
+        /* Cursor styles for canvas */
+        canvas.draggable { cursor: grab; }
+        canvas.dragging { cursor: grabbing; }
+    </style>
+    
+    <!-- Import Maps for Three.js modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <!-- UI Overlay -->
+    <div class="overlay top-0 left-0 w-full h-full p-6 flex flex-col justify-between">
+        
+        <!-- Header: Math & Volume -->
+        <div class="flex flex-col gap-4 items-start">
+            <div id="mainControls" class="bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-700 shadow-2xl text-white max-w-md controls">
+                <div class="flex justify-between items-start gap-4">
+                    <h1 class="text-2xl font-bold mb-2 text-blue-400">Volume &amp; Determinant</h1>
+                    <button id="closeMatrix" type="button" aria-label="Close the matrix panel"
+                            title="Close"
+                            class="text-slate-400 hover:text-white transition-colors bg-slate-800 rounded-full p-1 hover:bg-slate-700 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">Drag the sphere tips to change vectors.</p>
+                
+                <!-- Matrix Display -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 font-mono bg-slate-800/50 p-3 rounded-xl border border-slate-600/50 shadow-inner">
+                        <span class="text-slate-400 font-bold text-xl italic">det</span>
+                        
+                        <!-- Matrix Brackets & Grid -->
+                        <div class="relative px-3 py-1 border-l-2 border-r-2 border-slate-500 rounded-[4px]">
+                            <div class="grid grid-cols-3 gap-x-4 gap-y-1 text-sm text-right font-bold">
+                                <!-- Row 1 is the vector v1, so each row of the matrix is one of
+                                     the three vectors. The determinant is unchanged by this, which
+                                     is det A = det A-transpose. -->
+                                <span id="v1x" class="text-red-400">0.0</span>
+                                <span id="v1y" class="text-red-400">0.0</span>
+                                <span id="v1z" class="text-red-400">0.0</span>
+                                
+                                <!-- Row 2: v2 -->
+                                <span id="v2x" class="text-green-400">0.0</span>
+                                <span id="v2y" class="text-green-400">0.0</span>
+                                <span id="v2z" class="text-green-400">0.0</span>
+                                
+                                <!-- Row 3: v3 -->
+                                <span id="v3x" class="text-blue-400">0.0</span>
+                                <span id="v3y" class="text-blue-400">0.0</span>
+                                <span id="v3z" class="text-blue-400">0.0</span>
+                            </div>
+                        </div>
+                        
+                        <span class="text-slate-400 text-xl">=</span>
+                        <span id="det_display" class="text-2xl font-bold text-white">0.00</span>
+                    </div>
+                </div>
+
+                <!-- Volume Subtext -->
+                <div class="text-xs text-slate-500 pt-2 border-t border-slate-700 w-full text-center">
+                    Volume = |det| = <span id="vol_display" class="text-white font-mono font-bold">0.00</span>
+                </div>
+
+                <!-- The second solid, shown only while it is on screen -->
+                <div id="secondReadout" hidden
+                     class="text-xs text-slate-400 pt-2 mt-2 border-t border-slate-700 w-full text-center">
+                    <span class="text-violet-400 font-bold">2nd solid</span>:
+                    det = <span id="det2_display" class="font-mono font-bold text-violet-400">0.00</span>,
+                    volume = <span id="vol2_display" class="font-mono font-bold text-white">0.00</span>
+                    <div class="mt-1 text-slate-500">
+                        It starts face to face with the first. Drag the
+                        <span class="text-amber-400 font-bold">amber</span> middle to move it, the
+                        violet tips to change its sides.
+                    </div>
+                </div>
+            </div>
+
+            <button id="resetBtn" type="button"
+                    class="controls bg-slate-900/80 backdrop-blur-md hover:bg-slate-800 text-white px-4 py-1.5 rounded-full border border-slate-600 shadow-lg text-sm font-bold transition-colors">
+                Reset
+            </button>
+        </div>
+
+        <!-- Reflection Question (Initially Hidden) -->
+        <div id="reflectionQuestion" class="controls absolute top-6 right-6 bg-slate-900/90 backdrop-blur-md p-5 rounded-2xl border border-indigo-500/50 shadow-2xl max-w-xs transform transition-all duration-1000 opacity-0 translate-y-4 pointer-events-none">
+            <div class="flex justify-between items-start mb-3">
+                <h3 class="font-bold text-indigo-400 flex items-center gap-2 text-lg">
+                    <span>🤔</span> Reflection
+                </h3>
+                <button id="closeQuestion" class="text-slate-400 hover:text-white transition-colors bg-slate-800 rounded-full p-1 hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p class="text-sm text-slate-200 leading-relaxed">
+                Can you visualise 
+                <span class="font-bold text-white">multilinearity</span>, 
+                <span class="font-bold text-white">anti-symmetry</span>, and 
+                <span class="font-bold text-white">normalisation</span>?
+            </p>
+        </div>
+
+        <!-- Bottom Controls: Slider -->
+        <div class="flex justify-center w-full mb-8">
+            <div id="bottomControls" class="bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-xl flex flex-col items-center gap-2 w-full max-w-lg controls">
+                
+                <!-- Explanation Text -->
+                <div class="text-slate-300 text-sm font-mono">
+                    Adding <span class="text-yellow-400 font-bold">λ</span><span class="text-green-400 font-bold">v₂</span> to <span class="text-red-400 font-bold">v₁</span>
+               doesn't change determinant! </div>
+
+                <div class="flex items-center gap-4 w-full">
+                    <span class="text-yellow-400 font-mono font-bold text-xl">λ</span>
+                    <input type="range" id="lambdaSlider" min="-2" max="2" step="0.01" value="0" 
+                           class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    <span id="lambdaVal" class="text-white font-mono w-12 text-right">0.0</span>
+                    
+                    <!-- The sign flips between + and - ; the cube says what is being added. -->
+                    <button id="secondBtn" type="button" aria-pressed="false"
+                            title="Add a second solid" aria-label="Add a second solid"
+                            class="bg-violet-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded text-sm font-bold transition-colors flex items-center gap-1.5 shrink-0">
+                        <span id="secondSign" aria-hidden="true"
+                              class="text-base leading-none w-3 text-center">+</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                          <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Why the determinant does not change -->
+                <div id="shearQuestion" class="w-full border-t border-slate-700 pt-3 mt-2">
+                    <div class="flex justify-between items-start gap-3">
+                        <p class="text-sm text-slate-200 leading-relaxed">
+                            Adding <span class="text-yellow-400 font-bold">λ</span> times one row to
+                            another leaves the determinant alone. How do we see that in terms of
+                            <span class="font-bold text-white">volume</span>?
+                        </p>
+                        <button id="closeShearQuestion" type="button" title="Remove this question"
+                                aria-label="Remove this question"
+                                class="text-slate-400 hover:text-white transition-colors bg-slate-800 rounded-full p-1 hover:bg-slate-700 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <button id="showAnswerBtn" aria-expanded="false" aria-controls="answerBox"
+                            class="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-sm font-bold transition-colors">
+                        Show answer
+                    </button>
+                    <div id="answerBox" hidden
+                         class="mt-3 text-sm text-slate-300 leading-relaxed border-l-2 border-indigo-500 pl-3">
+                        Replacing <span class="text-red-400 font-bold">v₁</span> by
+                        <span class="text-red-400 font-bold">v₁</span> +
+                        <span class="text-yellow-400 font-bold">λ</span><span class="text-green-400 font-bold">v₂</span>
+                        slides the solid sideways, parallel to the base spanned by
+                        <span class="text-green-400 font-bold">v₂</span> and
+                        <span class="text-blue-400 font-bold">v₃</span>. The base does not move and
+                        the height above it does not change, so every slice taken parallel to the
+                        base is the same shape as before, merely shifted. Equal cross-sections at
+                        every height force equal volume: this is
+                        <span class="font-bold text-white">Cavalieri's principle</span>, and a shear
+                        is the cleanest example of it.
+                        <br><br>
+                        You can already see it above: drag <span class="text-yellow-400 font-bold">λ</span>
+                        and the box leans further and further over, while the number does not move.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- Configuration ---
+const COLORS = {
+    v1: 0xf87171, // Red-400
+    v2: 0x4ade80, // Green-400
+    v3: 0x60a5fa, // Blue-400
+    posDet: 0x38bdf8, // Sky blue for positive volume
+    negDet: 0xfb923c, // Orange for negative volume
+    grid: 0x1e293b,  // Slate-800
+    second: 0xa78bfa,       // Violet-400: the second solid, so the two never read as one
+    secondCorner: 0xfbbf24  // Amber-400: the corner that slides the whole second solid
+};
+
+// --- State ---
+let lambda = 0;
+
+// Base vectors (Logic state) - Identity Matrix
+const u1 = new THREE.Vector3(1, 0, 0);
+const u2 = new THREE.Vector3(0, 1, 0);
+const u3 = new THREE.Vector3(0, 0, 1);
+
+// Current displayed vectors (Visual state)
+let v1 = new THREE.Vector3();
+let v2 = new THREE.Vector3();
+let v3 = new THREE.Vector3();
+
+// --- Scene Setup ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f172a); // Slate-950
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(5, 4, 6); // Slightly adjusted camera for better view of identity matrix
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+document.body.appendChild(renderer.domElement);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(5, 10, 7);
+scene.add(dirLight);
+
+// --- Helpers ---
+const gridHelper = new THREE.GridHelper(20, 20, 0x475569, 0x1e293b);
+scene.add(gridHelper);
+
+// --- Visual Objects ---
+
+// Arrow Helpers
+function createThickArrow(color) {
+    return new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, color, 0.4, 0.2);
+}
+const arrowV1 = createThickArrow(COLORS.v1);
+const arrowV2 = createThickArrow(COLORS.v2);
+const arrowV3 = createThickArrow(COLORS.v3);
+scene.add(arrowV1, arrowV2, arrowV3);
+
+// Drag Handles (Spheres at tips)
+const handleGeo = new THREE.SphereGeometry(0.08, 16, 16);
+function createHandle(color, name, geo) {
+    const mat = new THREE.MeshBasicMaterial({ color: color });
+    const mesh = new THREE.Mesh(geo || handleGeo, mat);
+    mesh.userData = { isHandle: true, name: name };
+    return mesh;
+}
+const handleV1 = createHandle(COLORS.v1, 'v1');
+const handleV2 = createHandle(COLORS.v2, 'v2');
+const handleV3 = createHandle(COLORS.v3, 'v3');
+scene.add(handleV1, handleV2, handleV3);
+
+// Parallelepiped
+const boxGeometry = new THREE.BufferGeometry();
+const boxMaterial = new THREE.MeshBasicMaterial({ 
+    color: COLORS.posDet, 
+    transparent: true, 
+    opacity: 0.2, 
+    side: THREE.DoubleSide,
+    depthWrite: false 
+});
+const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+scene.add(boxMesh);
+
+const edgesMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true });
+const edgesGeometry = new THREE.BufferGeometry();
+const edgesLines = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+scene.add(edgesLines);
+
+// --- The second solid --------------------------------------------------------------------------
+// Entirely independent of the first: its own near corner and its own three edge vectors. The
+// shear slider acts on the first solid alone, so the two can be compared.
+const origin2 = new THREE.Vector3();
+const w1 = new THREE.Vector3(), w2 = new THREE.Vector3(), w3 = new THREE.Vector3();
+let secondVisible = false;
+
+const box2Geometry = new THREE.BufferGeometry();
+const box2Mesh = new THREE.Mesh(box2Geometry, new THREE.MeshBasicMaterial({
+    color: COLORS.second, transparent: true, opacity: 0.22,
+    side: THREE.DoubleSide, depthWrite: false
+}));
+const edges2Geometry = new THREE.BufferGeometry();
+const edges2Lines = new THREE.LineSegments(edges2Geometry, new THREE.LineBasicMaterial({
+    color: COLORS.second, opacity: 0.9, transparent: true
+}));
+scene.add(box2Mesh, edges2Lines);
+
+// Three tips to reshape it, and one larger corner to slide the whole thing about.
+const cornerGeo = new THREE.SphereGeometry(0.12, 16, 16);
+const handleW1 = createHandle(COLORS.second, 'w1');
+const handleW2 = createHandle(COLORS.second, 'w2');
+const handleW3 = createHandle(COLORS.second, 'w3');
+const handleW0 = createHandle(COLORS.secondCorner, 'w0', cornerGeo);
+scene.add(handleW1, handleW2, handleW3, handleW0);
+
+const ALL_HANDLES = [handleV1, handleV2, handleV3, handleW1, handleW2, handleW3, handleW0];
+// Only what is on screen can be grabbed: the second solid's handles stay out of the raycast
+// while it is hidden, or an invisible sphere would still answer the pointer.
+function activeHandles() {
+    return secondVisible ? ALL_HANDLES : [handleV1, handleV2, handleV3];
+}
+
+// --- Interaction Logic (Raycasting) ---
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const dragPlane = new THREE.Plane();
+const planeNormal = new THREE.Vector3();
+let draggedObject = null;
+
+function onPointerMove( event ) {
+    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+    raycaster.setFromCamera( pointer, camera );
+
+    if ( draggedObject ) {
+        // Drag logic
+        const intersectPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane( dragPlane, intersectPoint );
+        
+        if ( intersectPoint ) {
+            // Update the base vector based on which handle is dragged
+            if (draggedObject.userData.name === 'v1') {
+                // v1 = u1 + lambda * u2, so to put the tip of v1 at the pointer we need
+                // u1 = p - lambda * u2. u2 and u3 are untouched, so v2 and v3 do not move.
+                u1.copy(intersectPoint).addScaledVector(u2, -lambda);
+            } else if (draggedObject.userData.name === 'v2') {
+                // Moving u2 would drag v1 along with it whenever lambda is not 0, because
+                // v1 is defined as u1 + lambda * u2. Hold v1 where it is by re-expressing
+                // it against the new u2.
+                const v1Held = v1.clone();
+                u2.copy(intersectPoint);
+                u1.copy(v1Held).addScaledVector(u2, -lambda);
+            } else if (draggedObject.userData.name === 'v3') {
+                u3.copy(intersectPoint);
+            } else if (draggedObject.userData.name === 'w0') {
+                // Slides the whole solid: the three edge vectors are left alone, so its shape,
+                // and therefore its determinant, does not change. The handle marks the centre,
+                // so the near corner is half the long diagonal back from the pointer.
+                origin2.copy(intersectPoint).sub(centreOffset(new THREE.Vector3()));
+            } else if (draggedObject.userData.name === 'w1') {
+                w1.copy(intersectPoint).sub(origin2);
+            } else if (draggedObject.userData.name === 'w2') {
+                w2.copy(intersectPoint).sub(origin2);
+            } else if (draggedObject.userData.name === 'w3') {
+                w3.copy(intersectPoint).sub(origin2);
+            }
+            updateVectors();
+        }
+        return;
+    }
+
+    // Hover logic (Cursor change)
+    const intersects = raycaster.intersectObjects( activeHandles() );
+    if ( intersects.length > 0 ) {
+        renderer.domElement.classList.add('draggable');
+        intersects[0].object.scale.setScalar(1.5); // Highlight
+    } else {
+        renderer.domElement.classList.remove('draggable');
+        ALL_HANDLES.forEach(h => h.scale.setScalar(1));
+    }
+}
+
+function onPointerDown( event ) {
+    // Prevent dragging if clicking on UI
+    if (event.target.closest('.controls')) return;
+
+    raycaster.setFromCamera( pointer, camera );
+    const intersects = raycaster.intersectObjects( activeHandles() );
+
+    if ( intersects.length > 0 ) {
+        draggedObject = intersects[0].object;
+        controls.enabled = false; // Disable orbit while dragging
+        renderer.domElement.classList.add('dragging');
+        
+        // Set drag plane to face camera at the object's depth
+        camera.getWorldDirection( planeNormal );
+        dragPlane.setFromNormalAndCoplanarPoint( planeNormal, draggedObject.position );
+    }
+}
+
+function onPointerUp() {
+    draggedObject = null;
+    controls.enabled = true;
+    renderer.domElement.classList.remove('dragging');
+}
+
+window.addEventListener( 'pointermove', onPointerMove );
+window.addEventListener( 'pointerdown', onPointerDown );
+window.addEventListener( 'pointerup', onPointerUp );
+
+// --- Core Logic ---
+
+function updateVectors() {
+    // Apply Shear: v1 = u1 + lambda * u2
+    v1.copy(u1).addScaledVector(u2, lambda);
+    v2.copy(u2);
+    v3.copy(u3);
+
+    // Update Visuals
+    updateArrow(arrowV1, handleV1, v1);
+    updateArrow(arrowV2, handleV2, v2);
+    updateArrow(arrowV3, handleV3, v3);
+
+    updateParallelepiped();
+}
+
+function updateArrow(arrow, handle, vec) {
+    const len = vec.length();
+    if (len > 0.001) {
+        arrow.setDirection(vec.clone().normalize());
+        arrow.setLength(len, 0.4, 0.2);
+    }
+    handle.position.copy(vec);
+}
+
+// The vertex, edge and face tables are the same for every parallelepiped, so there is one copy
+// of them and both solids go through it. A second copy is where the next bug would hide.
+const EDGE_INDICES = [
+    [0,1], [0,2], [0,3],
+    [1,4], [2,4],
+    [1,5], [3,5],
+    [2,6], [3,6],
+    [4,7], [5,7], [6,7]
+];
+const FACE_INDICES = [
+    [0, 2, 4], [0, 4, 1],
+    [0, 1, 5], [0, 5, 3],
+    [0, 3, 6], [0, 6, 2],
+    [7, 5, 1], [7, 1, 4],
+    [7, 4, 2], [7, 2, 6],
+    [7, 6, 3], [7, 3, 5]
+];
+
+// Writes the solid spanned by a, b, c, with its near corner at `origin`, into the two geometries,
+// and returns its determinant a . (b x c).
+function writePiped(faceGeo, edgeGeo, a, b, c, origin) {
+    const o = origin || new THREE.Vector3(0, 0, 0);
+    const vertices = [
+        o.clone(),
+        o.clone().add(a),
+        o.clone().add(b),
+        o.clone().add(c),
+        o.clone().add(a).add(b),
+        o.clone().add(a).add(c),
+        o.clone().add(b).add(c),
+        o.clone().add(a).add(b).add(c)
+    ];
+
+    const edgePos = [];
+    EDGE_INDICES.forEach(pair => {
+        edgePos.push(vertices[pair[0]].x, vertices[pair[0]].y, vertices[pair[0]].z);
+        edgePos.push(vertices[pair[1]].x, vertices[pair[1]].y, vertices[pair[1]].z);
+    });
+    edgeGeo.setAttribute('position', new THREE.Float32BufferAttribute(edgePos, 3));
+
+    const facePos = [];
+    FACE_INDICES.forEach(tri => tri.forEach(idx => {
+        facePos.push(vertices[idx].x, vertices[idx].y, vertices[idx].z);
+    }));
+    faceGeo.setAttribute('position', new THREE.Float32BufferAttribute(facePos, 3));
+    faceGeo.computeVertexNormals();
+
+    return a.dot(new THREE.Vector3().crossVectors(b, c));
+}
+
+function updateParallelepiped() {
+    const det = writePiped(boxGeometry, edgesGeometry, v1, v2, v3, null);
+    updateUI(det);
+    updateSecond();
+}
+
+// Keeps the second solid's handles, geometry and readout in step. Called from
+// updateParallelepiped, so there is one entry point for both solids.
+// The handle that slides the whole solid sits at its CENTRE. At the near corner it would
+// coincide with the first solid's v1 tip, the two solids now being face to face, and a click
+// there would grab whichever the raycaster happened to return first.
+function centreOffset(target) {
+    return target.set(0, 0, 0)
+        .addScaledVector(w1, 0.5).addScaledVector(w2, 0.5).addScaledVector(w3, 0.5);
+}
+
+function updateSecond() {
+    handleW0.position.copy(origin2).add(centreOffset(new THREE.Vector3()));
+    handleW1.position.copy(origin2).add(w1);
+    handleW2.position.copy(origin2).add(w2);
+    handleW3.position.copy(origin2).add(w3);
+
+    const det2 = writePiped(box2Geometry, edges2Geometry, w1, w2, w3, origin2);
+
+    const d = document.getElementById('det2_display');
+    const v = document.getElementById('vol2_display');
+    if (d) {
+        d.innerText = det2.toFixed(2);
+        d.style.color = (det2 < 0) ? '#fb923c' : '#a78bfa';
+    }
+    if (v) v.innerText = Math.abs(det2).toFixed(2);
+}
+
+function setSecondVisible(on) {
+    secondVisible = on;
+    if (on) {
+        // A copy of the solid currently on screen, set down against it. Its near corner goes at
+        // the tip of v1, so the two share the whole face spanned by v2 and v3 and stand like two
+        // bricks: no gap, and not coincident either, which is what putting it at the origin
+        // would give.
+        w1.copy(v1); w2.copy(v2); w3.copy(v3);
+        origin2.copy(v1);
+    }
+    box2Mesh.visible = on;
+    edges2Lines.visible = on;
+    handleW0.visible = on;
+    handleW1.visible = on;
+    handleW2.visible = on;
+    handleW3.visible = on;
+
+    const row = document.getElementById('secondReadout');
+    if (row) { if (on) row.removeAttribute('hidden'); else row.setAttribute('hidden', ''); }
+    const btn = document.getElementById('secondBtn');
+    const sign = document.getElementById('secondSign');
+    // The label is the sign beside the cube, so only that character changes. Writing to
+    // btn.textContent here would delete the cube with it.
+    if (sign) sign.textContent = on ? '\u2212' : '+';
+    if (btn) {
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const label = on ? 'Remove the second solid' : 'Add a second solid';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
+    updateSecond();
+}
+
+function updateUI(det) {
+    const detDisplay = document.getElementById('det_display');
+    const volDisplay = document.getElementById('vol_display');
+    const lambdaVal = document.getElementById('lambdaVal');
+    const boxColor = (det < -0.001) ? COLORS.negDet : COLORS.posDet;
+
+    boxMesh.material.color.setHex(boxColor);
+
+    // Update Matrix Coordinates
+    // Row 1 (X)
+    document.getElementById('v1x').innerText = v1.x.toFixed(1);
+    document.getElementById('v2x').innerText = v2.x.toFixed(1);
+    document.getElementById('v3x').innerText = v3.x.toFixed(1);
+    // Row 2 (Y)
+    document.getElementById('v1y').innerText = v1.y.toFixed(1);
+    document.getElementById('v2y').innerText = v2.y.toFixed(1);
+    document.getElementById('v3y').innerText = v3.y.toFixed(1);
+    // Row 3 (Z)
+    document.getElementById('v1z').innerText = v1.z.toFixed(1);
+    document.getElementById('v2z').innerText = v2.z.toFixed(1);
+    document.getElementById('v3z').innerText = v3.z.toFixed(1);
+
+
+    detDisplay.innerText = det.toFixed(2);
+    detDisplay.style.color = (det < 0) ? '#fb923c' : '#38bdf8';
+    
+    volDisplay.innerText = Math.abs(det).toFixed(2);
+
+    lambdaVal.innerText = lambda.toFixed(2);
+}
+
+// --- Event Listeners ---
+const slider = document.getElementById('lambdaSlider');
+slider.addEventListener('input', (e) => {
+    lambda = parseFloat(e.target.value);
+    updateVectors();
+});
+
+// The answer to the Cavalieri question is hidden until asked for.
+(function () {
+    const btn = document.getElementById('showAnswerBtn');
+    const boxA = document.getElementById('answerBox');
+    if (!btn || !boxA) return;
+    btn.addEventListener('click', () => {
+        const open = btn.getAttribute('aria-expanded') === 'true';
+        if (open) { boxA.setAttribute('hidden', ''); } else { boxA.removeAttribute('hidden'); }
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        btn.textContent = open ? 'Show answer' : 'Hide answer';
+    });
+})();
+
+// Show 2nd / Hide 2nd. Pressing it either way re-copies the first solid's shape, which is the
+// quickest way back to a sane second solid after it has been dragged out of sight.
+document.getElementById('secondBtn').addEventListener('click', () => {
+    setSecondVisible(!secondVisible);
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+    lambda = 0;
+    slider.value = 0;
+    u1.set(1, 0, 0);
+    u2.set(0, 1, 0);
+    u3.set(0, 0, 1);
+    updateVectors();
+});
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// --- The matrix panel -------------------------------------------------------------------------
+// The x hides it. There is no button to bring it back: the "Show matrix" control was removed at
+// the author's request, so the panel is open at every width when the figure loads and closing it
+// lasts until the page is reloaded.
+const mainControls = document.getElementById('mainControls');
+const closeMatrixBtn = document.getElementById('closeMatrix');
+
+if (mainControls && closeMatrixBtn) {
+    closeMatrixBtn.addEventListener('click', () => { mainControls.style.display = 'none'; });
+}
+
+// The shear question can be dismissed the same way.
+const shearQuestion = document.getElementById('shearQuestion');
+const closeShearBtn = document.getElementById('closeShearQuestion');
+
+if (shearQuestion && closeShearBtn) {
+    closeShearBtn.addEventListener('click', () => { shearQuestion.style.display = 'none'; });
+}
+
+// --- Animation Loop ---
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// Init
+setSecondVisible(false);
+updateVectors();
+animate();
+
+// Show Question after 10 seconds
+setTimeout(() => {
+    const qBox = document.getElementById('reflectionQuestion');
+    if(qBox) {
+        qBox.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+    }
+}, 10000);
+
+document.getElementById('closeQuestion').addEventListener('click', () => {
+    const qBox = document.getElementById('reflectionQuestion');
+    qBox.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCA Visualiser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        html, body { height: 100%; min-height: 600px; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; 
+            color: white; 
+            touch-action: none;
+        }
+        .canvas-container {
+            position: relative;
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="flex flex-col p-4 gap-4 h-screen">
+
+    <!-- Header / Stats -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col md:flex-row gap-6 items-center justify-between flex-shrink-0">
+        <div>
+            <h1 class="text-xl font-bold text-blue-400">Principal Component Analysis</h1>
+            <p class="text-xs text-slate-400 mt-1">
+                Rotate the line to minimise the sum of squared distances (SSE).
+            </p>
+        </div>
+
+        <!-- Stats Display -->
+        <div class="flex items-center gap-4">
+            <!-- Status Box (Now on the Left) -->
+            <div id="statusBox" class="hidden px-3 py-2 rounded bg-green-500/20 border border-green-500 text-green-400 text-xs font-bold uppercase tracking-wider animate-pulse whitespace-nowrap">
+                PCA Line Achieved
+            </div>
+
+            <div class="flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-700">
+                <div class="text-right">
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider">Sum of Squared Errors</div>
+                    <div class="text-2xl font-bold mono text-yellow-400 transition-all" id="sseDisplay">0.00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Canvas -->
+    <div class="flex-grow relative w-full min-h-0">
+        <div class="canvas-container w-full h-full" id="canvasContainer">
+            <canvas id="mainCanvas"></canvas>
+            
+            <div class="absolute bottom-4 right-4 flex gap-2">
+                <button id="btnRefresh" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm font-bold border border-slate-500 shadow-lg transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    New Data
+                </button>
+            </div>
+
+            <div class="absolute top-4 left-4 pointer-events-none">
+                <p class="text-xs text-slate-500">Mean is centered at origin (0,0)</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {
+    // --- Config ---
+    const pointCount = 6;
+    const scale = 40; 
+    const hitRadius = 20; // Tolerance for determining "Optimal" angle (degrees)
+
+    // --- State ---
+    let points = []; // Array of {x, y}
+    let lineAngle = Math.PI / 4; // Initial angle (radians)
+    let optimalAngle = 0;
+    let minSSE = 0;
+    let currentSSE = 0;
+    let isOptimal = false;
+    let isDragging = false;
+
+    // --- DOM ---
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasContainer');
+    const sseDisplay = document.getElementById('sseDisplay');
+    const statusBox = document.getElementById('statusBox');
+    const btnRefresh = document.getElementById('btnRefresh');
+
+    // --- Logic ---
+
+    function generateData() {
+        points = [];
+        let sumX = 0;
+        let sumY = 0;
+
+        // 1. Generate random points with some correlation preference to make PCA interesting
+        // We create an arbitrary "true" axis first to generate data around it
+        const biasAngle = Math.random() * Math.PI;
+        const spread = 2 + Math.random() * 3;
+        
+        for (let i = 0; i < pointCount; i++) {
+            // Random magnitude
+            const dist = (Math.random() - 0.5) * 12;
+            // Random noise perpendicular to axis
+            const noise = (Math.random() - 0.5) * spread;
+            
+            // Rotate to bias angle
+            const x = dist * Math.cos(biasAngle) - noise * Math.sin(biasAngle);
+            const y = dist * Math.sin(biasAngle) + noise * Math.cos(biasAngle);
+            
+            points.push({ x, y });
+            sumX += x;
+            sumY += y;
+        }
+
+        // 2. Center the data (Mean = 0,0)
+        const meanX = sumX / pointCount;
+        const meanY = sumY / pointCount;
+
+        points = points.map(p => ({
+            x: p.x - meanX,
+            y: p.y - meanY
+        }));
+
+        calculateTruePCA();
+        draw();
+    }
+
+    function calculateTruePCA() {
+        // To find the first Principal Component in 2D, we calculate the covariance matrix
+        // Cov(X,X), Cov(Y,Y), Cov(X,Y)
+        // Since mean is 0, Cov(X,Y) = sum(x*y) / (n-1)
+        
+        let xx = 0, yy = 0, xy = 0;
+        for (let p of points) {
+            xx += p.x * p.x;
+            yy += p.y * p.y;
+            xy += p.x * p.y;
+        }
+
+        // The angle of the First Principal Component is given by:
+        // tan(2*theta) = 2*Cov(xy) / (Cov(xx) - Cov(yy))
+        // theta = 0.5 * atan2(2*xy, xx - yy)
+        
+        optimalAngle = 0.5 * Math.atan2(2 * xy, xx - yy);
+        
+        // Calculate Min SSE for this angle
+        minSSE = calculateSSE(optimalAngle);
+    }
+
+    function calculateSSE(angle) {
+        // Line unit vector
+        const ux = Math.cos(angle);
+        const uy = Math.sin(angle);
+        
+        let sse = 0;
+
+        // For a line passing through origin with direction u = (ux, uy)
+        // The vector from origin to point is p.
+        // The projection of p onto line is (p . u) * u
+        // The orthogonal distance squared is ||p||^2 - (p . u)^2
+        // Or calculate perp distance directly: |p x u| (2D cross product magnitude)
+        
+        for (let p of points) {
+            // Distance from point to line (ax + by + c = 0 formulation or cross product)
+            // In 2D, dist = abs(x*(-uy) + y*(ux)) ... rotating normal vector
+            // Normal vector n = (-sin, cos)
+            const nx = -Math.sin(angle);
+            const ny = Math.cos(angle);
+            
+            const dist = Math.abs(p.x * nx + p.y * ny);
+            sse += dist * dist;
+        }
+        return sse;
+    }
+
+    // --- Drawing ---
+
+    function toScreen(x, y) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        return {
+            x: cx + x * scale,
+            y: cy - y * scale
+        };
+    }
+
+    function fromScreen(sx, sy) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        return {
+            x: (sx - cx) / scale,
+            y: -(sy - cy) / scale
+        };
+    }
+
+    function drawGrid() {
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        
+        // Grid lines
+        for(let x = cx % scale; x < w; x += scale) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+        for(let y = cy % scale; y < h; y += scale) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+        ctx.stroke();
+
+        // Axes
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+        ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+        ctx.stroke();
+    }
+
+    function draw() {
+        // Clear
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        drawGrid();
+
+        // 1. Check Optimality
+        // Normalize angles to 0-PI range for comparison (line is bidirectional)
+        let normCurrent = (lineAngle % Math.PI + Math.PI) % Math.PI;
+        let normOptimal = (optimalAngle % Math.PI + Math.PI) % Math.PI;
+        
+        // Handle wrap-around (e.g. 179 degrees vs 1 degree)
+        let diff = Math.abs(normCurrent - normOptimal);
+        if (diff > Math.PI / 2) diff = Math.PI - diff;
+
+        // Threshold: 3 degrees in radians
+        const threshold = 3 * (Math.PI / 180);
+        isOptimal = diff < threshold;
+
+        // Update UI
+        if (isOptimal) {
+            statusBox.classList.remove('hidden');
+            sseDisplay.classList.remove('text-yellow-400');
+            sseDisplay.classList.add('text-green-400');
+        } else {
+            statusBox.classList.add('hidden');
+            sseDisplay.classList.add('text-yellow-400');
+            sseDisplay.classList.remove('text-green-400');
+        }
+
+        // 2. Draw The Line
+        const maxDim = Math.max(canvas.width, canvas.height);
+        const lx = Math.cos(lineAngle) * maxDim;
+        const ly = Math.sin(lineAngle) * maxDim;
+        const center = toScreen(0, 0);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = isOptimal ? '#4ade80' : '#f8fafc'; // Green or White
+        ctx.lineWidth = isOptimal ? 4 : 2;
+        ctx.setLineDash([10, 10]); // Dashed line
+        ctx.moveTo(center.x - lx, center.y + ly); // +ly because screen Y is flipped
+        ctx.lineTo(center.x + lx, center.y - ly);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 3. Draw Points and Projections
+        currentSSE = 0;
+
+        // Unit vector of line
+        const ux = Math.cos(lineAngle);
+        const uy = Math.sin(lineAngle);
+
+        points.forEach(p => {
+            const screenP = toScreen(p.x, p.y);
+
+            // Calculate Projection
+            // Projection scalar t = p . u
+            const t = p.x * ux + p.y * uy;
+            // Projected Point
+            const projX = t * ux;
+            const projY = t * uy;
+            const screenProj = toScreen(projX, projY);
+
+            // Calc Squared Error for display
+            const dx = p.x - projX;
+            const dy = p.y - projY;
+            currentSSE += (dx*dx + dy*dy);
+
+            // Draw Projection Line (Residual)
+            ctx.beginPath();
+            ctx.strokeStyle = isOptimal ? '#facc15' : '#facc15'; // Yellow
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.6;
+            ctx.moveTo(screenP.x, screenP.y);
+            ctx.lineTo(screenProj.x, screenProj.y);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+
+            // Draw Projected point on the line (shadow)
+            ctx.beginPath();
+            ctx.fillStyle = '#facc15'; // Yellow
+            ctx.arc(screenProj.x, screenProj.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Original Point
+            ctx.beginPath();
+            ctx.fillStyle = '#60a5fa'; // Blue
+            ctx.arc(screenP.x, screenP.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+
+        // Update Text
+        sseDisplay.innerText = currentSSE.toFixed(2);
+    }
+
+    // --- Interactions ---
+
+    function handleInput(x, y) {
+        const mathPos = fromScreen(x, y);
+        // Calculate angle from origin
+        lineAngle = Math.atan2(mathPos.y, mathPos.x);
+        draw();
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        const rect = canvas.getBoundingClientRect();
+        handleInput(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        handleInput(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    
+    // Touch support
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDragging = true;
+        const rect = canvas.getBoundingClientRect();
+        handleInput(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+    }, {passive: false});
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        handleInput(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+    }, {passive: false});
+    
+    window.addEventListener('touchend', () => { isDragging = false; });
+
+
+    btnRefresh.addEventListener('click', generateData);
+
+    function resize() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        draw();
+    }
+    window.addEventListener('resize', resize);
+
+    // Init
+    resize();
+    generateData();
+
+})();
+</script>
+</body>
+</html>
